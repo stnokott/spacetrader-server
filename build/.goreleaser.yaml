@@ -14,7 +14,7 @@ builds:
     goos:
       - linux
     goarch:
-      - amd64"
+      - amd64
     ldflags:
       - -s # -s and -w reduce binary size, but prevent debugging (not necessary for production build)
       - -w
@@ -29,26 +29,6 @@ builds:
     ldflags:
       - -s
       - -w
-
-dockers:
-  - use: buildx
-    image_templates:
-      - "ghcr.io/stnokott/{{ .ProjectName }}:{{ .Version }}-amd64"
-      - "ghcr.io/stnokott/{{ .ProjectName }}:latest-amd64"
-    dockerfile: Dockerfile
-    build_flag_templates:
-      - "--pull"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.title={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-      - "--platform=linux/amd64"
-
-docker_manifests:
-  - name_template: "ghcr.io/stnokott/{{ .ProjectName }}:{{ .Version }}"
-    image_templates:
-      - "ghcr.io/stnokott/{{ .ProjectName }}:{{ .Version }}-amd64"
-      - "ghcr.io/stnokott/{{ .ProjectName }}:latest-amd64"
 
 changelog:
   sort: asc
