@@ -1,9 +1,11 @@
 name: Review
 
 on:
-  pull_request: {}
-  pull_request_review_comment:
-    types: [created, edited]
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 jobs:
   golangci-lint:
@@ -14,3 +16,16 @@ jobs:
         uses: actions/checkout@v4.1.7
       - name: Run golangci-lint with reviewdog
         uses: reviewdog/action-golangci-lint@v2.6.2
+
+  sonarcloud:
+    name: SonarCloud
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.1.7
+        with:
+          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
