@@ -1,38 +1,12 @@
-// Package client performs requests and unmarshals responses.
-package client
+package main
 
 import (
+	"context"
 	"fmt"
-	"time"
 
 	"github.com/go-resty/resty/v2"
 	log "github.com/sirupsen/logrus"
-	"github.com/stnokott/spacetrader/internal/api"
 )
-
-// Client serves as an abstraction layer for the SpaceTraders API.
-type Client struct {
-	rest *resty.Client
-}
-
-// New creates and returns a new Client instance.
-func New(baseURL string, token string) *Client {
-	rest := resty.New()
-	rest.SetBaseURL(baseURL)
-	rest.SetAuthToken(token)
-	rest.SetHeaders(map[string]string{
-		"Accept":     "application/json",
-		"User-Agent": "github.com/stnokott/spacetraders",
-	})
-	rest.SetTimeout(5 * time.Second) // TODO: allow configuring from env
-	rest.SetLogger(log.StandardLogger())
-
-	rest.OnBeforeRequest(beforeRequest)
-
-	return &Client{
-		rest: rest,
-	}
-}
 
 // beforeRequest prints the HTTP method, base URL and URL path for the current request before executing it.
 func beforeRequest(c *resty.Client, r *resty.Request) error {
@@ -41,9 +15,15 @@ func beforeRequest(c *resty.Client, r *resty.Request) error {
 }
 
 // get is a generic utility function for reducing boilerplate client code.
-func get[T any](rest *resty.Client, dst T, path string, expectedStatus int) error {
+func get[T any](ctx context.Context, rest *resty.Client, dst T, path string, expectedStatus int) (err error) {
+	defer func() {
+		if err != nil {
+			log.Error(err)
+		}
+	}()
 	req := rest.R().SetResult(dst)
-	resp, err := req.Get(path)
+	var resp *resty.Response
+	resp, err = req.SetContext(ctx).Get(path)
 	if err != nil {
 		return err
 	}
@@ -63,7 +43,7 @@ type UnexpectedStatusCodeErr struct {
 }
 
 func (e UnexpectedStatusCodeErr) Error() string {
-	return fmt.Sprintf("expected status %d, got %d", e.Expected, e.Actual)
+	return fmt.Sprintf("expected status %d, got %d (%s)", e.Expected, e.Actual, e.Msg)
 }
 
 // expectStatus compares the status code of a request with the expected code and returns an error if a mismatch is encountered.
@@ -77,13 +57,4 @@ func expectStatus(resp *resty.Response, expectedStatus int) error {
 		}
 	}
 	return nil
-}
-
-// Status returns the current server status.
-func (c *Client) Status() (*api.Status, error) {
-	result := new(api.Status)
-	if err := get(c.rest, result, "/", 200); err != nil {
-		return nil, err
-	}
-	return result, nil
 }

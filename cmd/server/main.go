@@ -1,11 +1,10 @@
-// Package main runs the core program loop.
+// Package main is the gRPC server.
 package main
 
 import (
 	"os"
 
 	log "github.com/sirupsen/logrus"
-	"github.com/stnokott/spacetrader/internal/client"
 	"github.com/stnokott/spacetrader/internal/config"
 )
 
@@ -39,11 +38,7 @@ func main() {
 		log.Fatal(cfg)
 	}
 
-	// create API client
-	cli := client.New(baseURL, cfg.AgentToken)
-	status, err := cli.Status()
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Info(status)
+	// create server
+	s := New(baseURL, cfg.AgentToken)
+	log.Fatal(s.Listen(55555)) // TODO: configure port from env
 }

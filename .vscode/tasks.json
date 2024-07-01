@@ -4,11 +4,35 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
-			"label": "build snapshot",
+			"label": "Build snapshot",
 			"type": "shell",
 			"command": "goreleaser release --skip=publish --clean --snapshot --config=build/.goreleaser.yaml",
 			"problemMatcher": "$go",
 			"group": "build"
+		},
+		{
+			"label": "Launch gRPC UI",
+			"type": "shell",
+			"command": "go",
+			"args": [
+				"run",
+				"github.com/fullstorydev/grpcui@latest",
+				"--plaintext",
+				"--import-path=internal/proto/",
+				"--proto=server.proto",
+				"localhost:55555"
+			],
+			"group": "none",
+			"isBackground": true,
+			"presentation": {
+				"echo": true,
+				"reveal": "silent",
+				"focus": false,
+				"panel": "shared",
+				"showReuseMessage": true,
+				"clear": false
+			},
+			"problemMatcher": []
 		}
 	]
 }

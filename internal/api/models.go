@@ -40,10 +40,10 @@ type Status struct {
 		Frequency string    `json:"frequency"`
 	} `json:"serverResets"`
 	Statistics struct {
-		Agents    int `json:"agents"`
-		Ships     int `json:"ships"`
-		Waypoints int `json:"waypoints"`
-		Systems   int `json:"systems"`
+		Agents    int64 `json:"agents"`
+		Ships     int64 `json:"ships"`
+		Waypoints int64 `json:"waypoints"`
+		Systems   int64 `json:"systems"`
 	} `json:"stats"`
 	Announcements []struct {
 		Title string `json:"title"`

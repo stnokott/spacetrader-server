@@ -7,27 +7,18 @@ before:
     - go mod tidy
     - go mod verify
 builds:
-  - id: linux
-    binary: app
+  - id: server
+    binary: server
+    main: ./cmd/server
     env:
       - CGO_ENABLED=0
     goos:
       - linux
-    goarch:
-      - amd64
-    ldflags:
-      - -s # -s and -w reduce binary size, but prevent debugging (not necessary for production build)
-      - -w
-  - id: windows
-    binary: app
-    env:
-      - CGO_ENABLED=0
-    goos:
       - windows
     goarch:
       - amd64
     ldflags:
-      - -s
+      - -s # -s and -w reduce binary size, but prevent debugging (not necessary for production build)
       - -w
 
 changelog:

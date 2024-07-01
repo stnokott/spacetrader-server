@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+option go_package = "github.com/stnokott/spacetrader/internal/proto";
+
+package proto;
+
+service SpaceTradersService {
+	rpc GetServerStatus(google.protobuf.Empty) returns (ServerStatusReply) {}
+}
+
+message ServerStatusReply {
+	string version = 1;
+	google.protobuf.Timestamp last_reset = 2;
+	google.protobuf.Timestamp next_reset = 3;
+
+	message GlobalStats {
+		int64 agents = 1;
+		int64 ships = 2;
+		int64 waypoints = 3;
+		int64 systems = 4;
+	}
+	
+	message Announcement {
+		string title = 1;
+		string body = 2;
+	}
+
+	GlobalStats global_stats = 4;
+	repeated Announcement announcements = 5;
+}
