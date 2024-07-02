@@ -8,9 +8,24 @@
 			"name": "Launch Server",
 			"type": "go",
 			"request": "launch",
-			"mode": "auto",
-			"program": "${workspaceFolder}/cmd/server/main.go",
+			"mode": "debug",
+			"program": "${workspaceFolder}/cmd/server",
 			"envFile": "${workspaceFolder}/cmd/server/.env"
+		},
+		{
+			"name": "Launch Client",
+			"type": "go",
+			"request": "launch",
+			"mode": "debug",
+			"program": "${workspaceFolder}/cmd/client",
+			"console": "internalConsole",
+			"buildFlags": [
+				"-tags hints"
+			],
+			"cwd": "${workspaceFolder}",
+			"env": {
+				"CGO_ENABLED": "1"
+			}
 		}
 	]
 }

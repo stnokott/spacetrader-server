@@ -12,14 +12,17 @@ builds:
     main: ./cmd/server
     env:
       - CGO_ENABLED=0
-    goos:
-      - linux
-      - windows
-    goarch:
-      - amd64
-    ldflags:
-      - -s # -s and -w reduce binary size, but prevent debugging (not necessary for production build)
-      - -w
+    goos: ["linux", "windows"]
+    goarch: ["amd64"]
+    ldflags: ["-s", "-w"] # -s and -w reduce binary size, but prevent debugging (not necessary for production build)
+  - id: client
+    binary: client
+    main: ./cmd/client
+    env:
+      - CGO_ENABLED=1
+    goos: ["windows"] # currently don't have capabilities for cross-compiling. See https://docs.fyne.io/started/cross-compiling.
+    goarch: ["amd64"]
+    ldflags: ["-s", "-w"]
 
 changelog:
   sort: asc
