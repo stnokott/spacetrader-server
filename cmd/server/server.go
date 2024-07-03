@@ -64,6 +64,11 @@ func (s *Server) Listen(port int) error {
 	return nil
 }
 
+// Ping is used by clients to ensure this server is online.
+func (s *Server) Ping(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
+	return &emptypb.Empty{}, nil
+}
+
 // GetServerStatus returns the current server status and some statistics.
 func (s *Server) GetServerStatus(ctx context.Context, _ *emptypb.Empty) (*pb.ServerStatusReply, error) {
 	result := new(api.Status)

@@ -1,5 +1,7 @@
 package main
 
+import "sync"
+
 // TypedBinding is a generic binding which introduces generics to
 // Fyne's builtin bindings.
 //
@@ -8,6 +10,7 @@ package main
 type TypedBinding[T any] struct {
 	data      T
 	listeners []func(T)
+	m         sync.RWMutex
 }
 
 // NewTypedBinding creates a new binding for the type T.
@@ -17,7 +20,9 @@ func NewTypedBinding[T any]() *TypedBinding[T] {
 
 // Set updates the internal representation of the data.
 func (b *TypedBinding[T]) Set(data T) {
+	b.m.Lock()
 	b.data = data
+	b.m.Unlock()
 	for _, listener := range b.listeners {
 		listener(b.data)
 	}
@@ -25,6 +30,8 @@ func (b *TypedBinding[T]) Set(data T) {
 
 // Get returns the internal representation of the data.
 func (b *TypedBinding[T]) Get() T {
+	b.m.RLock()
+	defer b.m.RUnlock()
 	return b.data
 }
 

@@ -8,7 +8,8 @@ option go_package = "github.com/stnokott/spacetrader/internal/proto";
 package proto;
 
 service SpaceTradersService {
-	rpc GetServerStatus(google.protobuf.Empty) returns (ServerStatusReply) {}
+	rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty);
+	rpc GetServerStatus(google.protobuf.Empty) returns (ServerStatusReply);
 }
 
 message ServerStatusReply {

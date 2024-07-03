@@ -20,6 +20,7 @@ import (
 const _ = grpc.SupportPackageIsVersion8
 
 const (
+	SpaceTradersService_Ping_FullMethodName            = "/proto.SpaceTradersService/Ping"
 	SpaceTradersService_GetServerStatus_FullMethodName = "/proto.SpaceTradersService/GetServerStatus"
 )
 
@@ -27,6 +28,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type SpaceTradersServiceClient interface {
+	Ping(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	GetServerStatus(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ServerStatusReply, error)
 }
 
@@ -36,6 +38,16 @@ type spaceTradersServiceClient struct {
 
 func NewSpaceTradersServiceClient(cc grpc.ClientConnInterface) SpaceTradersServiceClient {
 	return &spaceTradersServiceClient{cc}
+}
+
+func (c *spaceTradersServiceClient) Ping(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, SpaceTradersService_Ping_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *spaceTradersServiceClient) GetServerStatus(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ServerStatusReply, error) {
@@ -52,6 +64,7 @@ func (c *spaceTradersServiceClient) GetServerStatus(ctx context.Context, in *emp
 // All implementations must embed UnimplementedSpaceTradersServiceServer
 // for forward compatibility
 type SpaceTradersServiceServer interface {
+	Ping(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
 	GetServerStatus(context.Context, *emptypb.Empty) (*ServerStatusReply, error)
 	mustEmbedUnimplementedSpaceTradersServiceServer()
 }
@@ -60,6 +73,9 @@ type SpaceTradersServiceServer interface {
 type UnimplementedSpaceTradersServiceServer struct {
 }
 
+func (UnimplementedSpaceTradersServiceServer) Ping(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
+}
 func (UnimplementedSpaceTradersServiceServer) GetServerStatus(context.Context, *emptypb.Empty) (*ServerStatusReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetServerStatus not implemented")
 }
@@ -74,6 +90,24 @@ type UnsafeSpaceTradersServiceServer interface {
 
 func RegisterSpaceTradersServiceServer(s grpc.ServiceRegistrar, srv SpaceTradersServiceServer) {
 	s.RegisterService(&SpaceTradersService_ServiceDesc, srv)
+}
+
+func _SpaceTradersService_Ping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SpaceTradersServiceServer).Ping(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SpaceTradersService_Ping_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SpaceTradersServiceServer).Ping(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _SpaceTradersService_GetServerStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -101,6 +135,10 @@ var SpaceTradersService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "proto.SpaceTradersService",
 	HandlerType: (*SpaceTradersServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Ping",
+			Handler:    _SpaceTradersService_Ping_Handler,
+		},
 		{
 			MethodName: "GetServerStatus",
 			Handler:    _SpaceTradersService_GetServerStatus_Handler,

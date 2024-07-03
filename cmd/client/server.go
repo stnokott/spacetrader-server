@@ -1,8 +1,6 @@
 package main
 
 import (
-	"image/color"
-
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
@@ -13,10 +11,10 @@ import (
 	pb "github.com/stnokott/spacetrader/internal/proto"
 )
 
-// Server displays the current server connection status.
+// ServerWidget displays the current server connection status.
 // It also offers a popup with additional server information while connected.
-type Server struct {
-	widget.DisableableWidget
+type ServerWidget struct {
+	widget.BaseWidget
 
 	bg     *canvas.Rectangle
 	status *widget.Label
@@ -31,45 +29,48 @@ type Server struct {
 	root *fyne.Container
 }
 
+// ServerWidgetBindings holds all bindings which are relevant for the ServerWidget.
+type ServerWidgetBindings struct {
+	Info *TypedBinding[*pb.ServerStatusReply]
+}
+
 // NewServerWidget constructs a new widget which displays the current server connection status
 // and some additional metadata about it in a popup if data is populated.
-func NewServerWidget(data *TypedBinding[*pb.ServerStatusReply], parent fyne.Window) *Server {
-	bg := canvas.NewRectangle(color.Transparent)
-	status := widget.NewLabel("unknown")
+func NewServerWidget(bindings ServerWidgetBindings, parent fyne.Window) *ServerWidget {
+	bg := canvas.NewRectangle(_colorSuccess)
+	status := widget.NewLabel("Connected")
 	stack := container.NewStack(
 		bg,
 		status,
 	)
 
-	gameVersion := widget.NewLabel("n/a")
-	agents := widget.NewLabel("n/a")
-	ships := widget.NewLabel("n/a")
-	waypoints := widget.NewLabel("n/a")
-	systems := widget.NewLabel("n/a")
-
-	data.AddListener(func(data *pb.ServerStatusReply) {
-		gameVersion.SetText(data.Version)
-		agents.SetText(fmtInt(int(data.GlobalStats.Agents)))
-		ships.SetText(fmtInt(int(data.GlobalStats.Ships)))
-		waypoints.SetText(fmtInt(int(data.GlobalStats.Waypoints)))
-		systems.SetText(fmtInt(int(data.GlobalStats.Systems)))
-	})
+	newNameLabel := func(name string) *widget.Label {
+		return widget.NewLabelWithStyle(name, fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+	}
+	newValueLabel := func() *widget.Label {
+		return widget.NewLabelWithStyle("n/a", fyne.TextAlignTrailing, fyne.TextStyle{})
+	}
+	gameVersion := newValueLabel()
+	agents := newValueLabel()
+	ships := newValueLabel()
+	waypoints := newValueLabel()
+	systems := newValueLabel()
 
 	serverInfo := dialog.NewCustom(
 		"Server information",
 		"Close",
 		container.NewGridWithColumns(
 			2,
-			widget.NewLabel("Version:"), gameVersion,
-			widget.NewLabel("Agents:"), agents,
-			widget.NewLabel("Ships:"), ships,
-			widget.NewLabel("Waypoints:"), waypoints,
-			widget.NewLabel("Systems:"), systems,
+			newNameLabel("Version:"), gameVersion,
+			newNameLabel("Agents:"), agents,
+			newNameLabel("Ships:"), ships,
+			newNameLabel("Waypoints:"), waypoints,
+			newNameLabel("Systems:"), systems,
 		),
 		parent,
 	)
 
-	s := &Server{
+	w := &ServerWidget{
 		bg:               bg,
 		status:           status,
 		serverInfoDialog: serverInfo,
@@ -80,44 +81,29 @@ func NewServerWidget(data *TypedBinding[*pb.ServerStatusReply], parent fyne.Wind
 		systems:          systems,
 		root:             stack,
 	}
-	s.ExtendBaseWidget(s)
+	w.ExtendBaseWidget(w)
 
-	s.SetConnected(false)
-	return s
+	bindings.Info.AddListener(func(data *pb.ServerStatusReply) {
+		gameVersion.SetText(data.Version)
+		agents.SetText(fmtInt(int(data.GlobalStats.Agents)))
+		ships.SetText(fmtInt(int(data.GlobalStats.Ships)))
+		waypoints.SetText(fmtInt(int(data.GlobalStats.Waypoints)))
+		systems.SetText(fmtInt(int(data.GlobalStats.Systems)))
+	})
+	return w
 }
 
 // CreateRenderer is required for our custom widget.
-func (s *Server) CreateRenderer() fyne.WidgetRenderer {
-	return widget.NewSimpleRenderer(s.root)
+func (w *ServerWidget) CreateRenderer() fyne.WidgetRenderer {
+	return widget.NewSimpleRenderer(w.root)
 }
 
 // Tapped implements the fyne.Tappable interface.
-func (s *Server) Tapped(_ *fyne.PointEvent) {
-	if s.Disabled() {
-		return
-	}
-	s.serverInfoDialog.Show()
+func (w *ServerWidget) Tapped(_ *fyne.PointEvent) {
+	w.serverInfoDialog.Show()
 }
 
 // Cursor implements the desktop.Cursorable interface.
-func (s *Server) Cursor() desktop.Cursor {
-	if !s.Disabled() {
-		return desktop.PointerCursor
-	}
-	return desktop.DefaultCursor
-}
-
-// SetConnected defines how the widget looks and whether the button for the
-// popup with additional information is displayed (only when connected).
-func (s *Server) SetConnected(c bool) {
-	if c {
-		s.bg.FillColor = _colorSuccess
-		s.status.SetText("Connected")
-		s.Enable()
-	} else {
-		s.bg.FillColor = _colorError
-		s.status.SetText("Disconnected")
-		s.serverInfoDialog.Hide()
-		s.Disable()
-	}
+func (w *ServerWidget) Cursor() desktop.Cursor {
+	return desktop.PointerCursor
 }
