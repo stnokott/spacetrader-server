@@ -17,7 +17,10 @@ type Header struct {
 	root         *fyne.Container
 }
 
-func newHeader() *Header {
+// NewHeaderWidget creates a new widget to be displayed in the header, containing
+// metadata about the current agent.
+// TODO: binding (see server.go)
+func NewHeaderWidget() *Header {
 	title := widget.NewLabel("SpaceTrader")
 	title.TextStyle.Bold = true
 
@@ -41,14 +44,16 @@ func newHeader() *Header {
 		layout.NewSpacer(),
 		agentDetails,
 	)
-	return &Header{
+	h := &Header{
 		agentName:    agentName,
 		agentCredits: agentCredits,
 		root:         box,
 	}
+	h.ExtendBaseWidget(h)
+	return h
 }
 
-// CreateRenderer is required for our custom Header widget.
+// CreateRenderer is required for our custom widget.
 func (h *Header) CreateRenderer() fyne.WidgetRenderer {
 	return widget.NewSimpleRenderer(h.root)
 }

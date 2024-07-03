@@ -10,6 +10,8 @@ import (
 
 var (
 	_colorCredits = color.RGBA{234, 250, 90, 255}
+	_colorSuccess = color.RGBA{59, 201, 49, 255}
+	_colorError   = color.RGBA{249, 89, 89, 255}
 )
 
 // Theme implements fyne.Theme.
@@ -19,15 +21,17 @@ type Theme struct {
 var _ fyne.Theme = (*Theme)(nil)
 
 // Color implements fyne.Theme.
-func (t Theme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant) color.Color {
+func (Theme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant) color.Color {
 	if variant == theme.VariantDark {
 		switch name {
 		case theme.ColorNameBackground:
 			return color.RGBA{35, 49, 66, 255} // #233142
 		case theme.ColorNameForeground:
 			return color.RGBA{227, 227, 227, 255} // #e3e3e3
-		case theme.ColorNamePrimary:
-			return color.RGBA{249, 89, 89, 255} // #f95959
+		case theme.ColorNameSuccess:
+			return _colorSuccess
+		case theme.ColorNameError:
+			return _colorError
 		case theme.ColorNameDisabled:
 			return color.RGBA{69, 93, 122, 255} // #455d7a
 		case theme.ColorNameFocus:
@@ -43,7 +47,7 @@ var (
 )
 
 // Font implements fyne.Theme.
-func (t Theme) Font(style fyne.TextStyle) fyne.Resource {
+func (Theme) Font(style fyne.TextStyle) fyne.Resource {
 	if style.Bold {
 		return fontBold
 	}
@@ -51,17 +55,17 @@ func (t Theme) Font(style fyne.TextStyle) fyne.Resource {
 }
 
 // Icon implements fyne.Theme.
-func (t Theme) Icon(name fyne.ThemeIconName) fyne.Resource {
+func (Theme) Icon(name fyne.ThemeIconName) fyne.Resource {
 	return theme.DefaultTheme().Icon(name) // TODO
 }
 
 // Size implements fyne.Theme.
-func (t Theme) Size(name fyne.ThemeSizeName) float32 {
+func (Theme) Size(name fyne.ThemeSizeName) float32 {
 	switch name {
 	case theme.SizeNamePadding:
 		return 2
 	case theme.SizeNameInnerPadding:
-		return 2
+		return 4
 	}
 	return theme.DefaultTheme().Size(name)
 }
