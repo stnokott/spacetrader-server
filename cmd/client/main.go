@@ -2,9 +2,6 @@
 package main
 
 import (
-	"context"
-	"log"
-
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
@@ -20,7 +17,6 @@ func main() {
 	a.Settings().SetTheme(currentTheme)
 
 	w := a.NewWindow("SpaceTrader " + _version)
-	w.Resize(fyne.NewSize(800, 600))
 
 	serverInfoBinding := NewTypedBinding[*pb.ServerStatusReply]()
 
@@ -41,20 +37,10 @@ func main() {
 	worker := NewWorker("localhost:55555", workerBindings)
 	defer worker.Close()
 
-	// TODO: splash screen during connection
-	if !worker.CheckAppServer(context.TODO()) {
-		// TODO: popup
-		log.Println("app server not available")
-		return
-	}
-	if !worker.CheckGameServer(context.TODO()) {
-		// TODO: popup
-		log.Println("game server not available")
-		return
-	}
-
 	w.SetContent(root)
+	w.Resize(fyne.NewSize(800, 600))
 	w.CenterOnScreen()
-	w.SetMaster()
-	w.ShowAndRun()
+
+	ShowStartupSplash(a, w, worker)
+	a.Run()
 }

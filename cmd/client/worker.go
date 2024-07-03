@@ -21,6 +21,7 @@ type Worker struct {
 	bindings WorkerBindings
 }
 
+// WorkerBindings contains all bindings required for a Worker instance.
 type WorkerBindings struct {
 	ServerInfo *TypedBinding[*pb.ServerStatusReply]
 }
@@ -47,19 +48,22 @@ func NewWorker(addr string, bindings WorkerBindings) *Worker {
 	}
 }
 
-func (w *Worker) CheckAppServer(ctx context.Context) bool {
+// CheckAppServer pings the app server and returns any error it encounters.
+func (w *Worker) CheckAppServer(ctx context.Context) error {
 	_, err := w.client.Ping(ctx, nil)
-	// TODO: make error available
-	return err == nil
+	return err
 }
 
-func (w *Worker) CheckGameServer(ctx context.Context) bool {
+// CheckGameServer queries the current game server status and returns any error it encounters.
+//
+// It also updates the server status binding on success.
+func (w *Worker) CheckGameServer(ctx context.Context) error {
 	status, err := w.client.GetServerStatus(ctx, nil)
 	if err != nil {
-		return false
+		return err
 	}
 	w.bindings.ServerInfo.Set(status)
-	return true
+	return nil
 }
 
 // Close closes all gRPC connections.

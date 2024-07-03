@@ -11,6 +11,7 @@ import (
 var (
 	_colorCredits = color.RGBA{234, 250, 90, 255}
 	_colorSuccess = color.RGBA{59, 201, 49, 255}
+	_colorWarning = color.RGBA{250, 159, 90, 255}
 	_colorError   = color.RGBA{249, 89, 89, 255}
 )
 
@@ -30,6 +31,8 @@ func (Theme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant) color.Co
 			return color.RGBA{227, 227, 227, 255} // #e3e3e3
 		case theme.ColorNameSuccess:
 			return _colorSuccess
+		case theme.ColorNameWarning:
+			return _colorWarning
 		case theme.ColorNameError:
 			return _colorError
 		case theme.ColorNameDisabled:
