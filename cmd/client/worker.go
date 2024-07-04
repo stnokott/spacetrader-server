@@ -51,10 +51,10 @@ func (w *Worker) CheckAppServer(ctx context.Context) error {
 	return err
 }
 
-// CheckGameServer queries the current game server status and returns any error it encounters.
+// UpdateServerInfo queries the current game server status and returns any error it encounters.
 //
 // It also updates the server status binding on success.
-func (w *Worker) CheckGameServer(ctx context.Context) error {
+func (w *Worker) UpdateServerInfo(ctx context.Context) error {
 	status, err := w.client.GetServerStatus(ctx, nil)
 	if err != nil {
 		return err

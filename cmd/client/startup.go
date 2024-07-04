@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -21,7 +20,7 @@ func ShowStartupSplash(app fyne.App, next fyne.Window, worker *Worker) {
 	// display placeholder while attempting to connect
 	card := widget.NewCard(
 		"SpaceTrader "+_version,
-		"Connecting...",
+		"Initializing...",
 		container.NewVBox(
 			widget.NewProgressBarInfinite(),
 			layout.NewSpacer(),
@@ -35,13 +34,13 @@ func ShowStartupSplash(app fyne.App, next fyne.Window, worker *Worker) {
 	// since there is not only one possible error, we allow specifying an error along with its type.
 	onError := func(typ string, err error) {
 		label := widget.NewLabel(
-			fmt.Sprintf("%s error: %s", typ, status.Convert(err).Message()),
+			status.Convert(err).Message(),
 		)
 		label.Importance = widget.WarningImportance
 		label.Wrapping = fyne.TextWrapBreak
 		card := widget.NewCard(
 			"SpaceTrader "+_version,
-			"Connection error:",
+			typ+" error occured:",
 			label,
 		)
 		box := container.NewVBox(
@@ -69,7 +68,7 @@ func ShowStartupSplash(app fyne.App, next fyne.Window, worker *Worker) {
 			onError("App connection", err)
 			return
 		}
-		if err := worker.CheckGameServer(context.TODO()); err != nil {
+		if err := worker.UpdateServerInfo(context.TODO()); err != nil {
 			onError("Game connection", err)
 			return
 		}
