@@ -19,7 +19,7 @@
 			"command": "go",
 			"args": [
 				"run",
-				"github.com/fullstorydev/grpcui@latest",
+				"github.com/fullstorydev/grpcui/cmd/grpcui@latest",
 				"--plaintext",
 				"--import-path=internal/proto/",
 				"--proto=server.proto",
