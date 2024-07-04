@@ -14,22 +14,14 @@ type FooterWidget struct {
 	root *fyne.Container
 }
 
-// FooterWidgetBindings holds all bindings relevant for FooterWidget.
-type FooterWidgetBindings struct {
-	Server ServerWidgetBindings
-}
-
 // NewFooterWidget constructs a new footer, containing the current version
 // of the application and metadata about the current server connection.
-func NewFooterWidget(bindings FooterWidgetBindings, parent fyne.Window) *FooterWidget {
-	server := NewServerWidget(bindings.Server, parent)
-
+func NewFooterWidget() *FooterWidget {
 	version := widget.NewLabel(_version)
 	version.Alignment = fyne.TextAlignTrailing
 	version.Importance = widget.LowImportance
 
 	box := container.NewHBox(
-		server,
 		layout.NewSpacer(),
 		version,
 	)

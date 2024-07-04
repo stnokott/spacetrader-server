@@ -19,22 +19,19 @@ func main() {
 	w := a.NewWindow("SpaceTrader " + _version)
 
 	serverInfoBinding := NewTypedBinding[*pb.ServerStatusReply]()
-
-	footerBindings := FooterWidgetBindings{
-		Server: ServerWidgetBindings{
-			Info: serverInfoBinding,
-		},
+	headerBindings := HeaderWidgetBindings{
+		ServerStatus: serverInfoBinding,
 	}
 
-	header := NewHeaderWidget()
-	footer := NewFooterWidget(footerBindings, w)
+	header := NewHeaderWidget(headerBindings)
+	footer := NewFooterWidget()
 
 	root := container.NewBorder(header, footer, nil, nil)
 
 	workerBindings := WorkerBindings{
 		ServerInfo: serverInfoBinding,
 	}
-	worker := NewWorker("localhost:55555", workerBindings)
+	worker := NewWorker("localhost:55555", workerBindings) // TODO: from config
 	defer worker.Close()
 
 	w.SetContent(root)

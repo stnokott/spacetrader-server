@@ -8,7 +8,10 @@
 			"type": "shell",
 			"command": "goreleaser release --skip=publish --clean --snapshot --config=build/.goreleaser.yaml",
 			"problemMatcher": "$go",
-			"group": "build"
+			"group": "build",
+			"icon": {
+				"id": "coffee"
+			}
 		},
 		{
 			"label": "Launch gRPC UI",
@@ -32,7 +35,10 @@
 				"showReuseMessage": true,
 				"clear": false
 			},
-			"problemMatcher": []
+			"problemMatcher": [],
+			"icon": {
+				"id": "debug-alt"
+			}
 		},
 		{
 			"label": "Start Mock Server",

@@ -9,10 +9,13 @@ import (
 )
 
 var (
+	_colorBg      = color.RGBA{35, 49, 66, 255}
+	_colorFg      = color.RGBA{227, 227, 227, 255}
+	_colorPrimary = color.RGBA{249, 89, 89, 255}
 	_colorCredits = color.RGBA{234, 250, 90, 255}
 	_colorSuccess = color.RGBA{59, 201, 49, 255}
 	_colorWarning = color.RGBA{250, 159, 90, 255}
-	_colorError   = color.RGBA{249, 89, 89, 255}
+	_colorError   = _colorPrimary
 )
 
 // Theme implements fyne.Theme.
@@ -26,9 +29,11 @@ func (Theme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant) color.Co
 	if variant == theme.VariantDark {
 		switch name {
 		case theme.ColorNameBackground:
-			return color.RGBA{35, 49, 66, 255} // #233142
+			return _colorBg
 		case theme.ColorNameForeground:
-			return color.RGBA{227, 227, 227, 255} // #e3e3e3
+			return _colorFg
+		case theme.ColorNamePrimary:
+			return _colorPrimary
 		case theme.ColorNameSuccess:
 			return _colorSuccess
 		case theme.ColorNameWarning:
@@ -68,7 +73,7 @@ func (Theme) Size(name fyne.ThemeSizeName) float32 {
 	case theme.SizeNamePadding:
 		return 2
 	case theme.SizeNameInnerPadding:
-		return 4
+		return 0
 	}
 	return theme.DefaultTheme().Size(name)
 }

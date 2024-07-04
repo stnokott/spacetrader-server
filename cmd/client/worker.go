@@ -25,8 +25,7 @@ type WorkerBindings struct {
 }
 
 // NewWorker creates a new worker instance.
-// A connection is not established until:
-// TODO
+// A connection is not established until any of the query methods are called.
 func NewWorker(addr string, bindings WorkerBindings) *Worker {
 	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
