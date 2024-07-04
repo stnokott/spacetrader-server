@@ -22,6 +22,7 @@ type Worker struct {
 // WorkerBindings contains all bindings required for a Worker instance.
 type WorkerBindings struct {
 	ServerInfo *TypedBinding[*pb.ServerStatusReply]
+	AgentInfo  *TypedBinding[*pb.CurrentAgentReply]
 }
 
 // NewWorker creates a new worker instance.
@@ -60,6 +61,15 @@ func (w *Worker) UpdateServerInfo(ctx context.Context) error {
 		return err
 	}
 	w.bindings.ServerInfo.Set(status)
+	return nil
+}
+
+func (w *Worker) UpdateCurrentAgent(ctx context.Context) error {
+	agent, err := w.client.GetCurrentAgent(ctx, nil)
+	if err != nil {
+		return err
+	}
+	w.bindings.AgentInfo.Set(agent)
 	return nil
 }
 

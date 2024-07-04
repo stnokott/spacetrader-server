@@ -10,6 +10,7 @@ package proto;
 service SpaceTradersService {
 	rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty);
 	rpc GetServerStatus(google.protobuf.Empty) returns (ServerStatusReply);
+	rpc GetCurrentAgent(google.protobuf.Empty) returns (CurrentAgentReply);
 }
 
 message ServerStatusReply {
@@ -31,4 +32,11 @@ message ServerStatusReply {
 
 	GlobalStats global_stats = 4;
 	repeated Announcement announcements = 5;
+}
+
+message CurrentAgentReply {
+	string name = 1;
+	int64 credits = 2;
+	string headquarters = 3;
+	int64 shipCount = 4;
 }

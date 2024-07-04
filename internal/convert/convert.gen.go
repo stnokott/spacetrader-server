@@ -9,6 +9,18 @@ import (
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 )
 
+func ConvertAgent(source *api.Agent) *proto.CurrentAgentReply {
+	var pProtoCurrentAgentReply *proto.CurrentAgentReply
+	if source != nil {
+		var protoCurrentAgentReply proto.CurrentAgentReply
+		protoCurrentAgentReply.Name = (*source).Symbol
+		protoCurrentAgentReply.Credits = (*source).Credits
+		protoCurrentAgentReply.Headquarters = (*source).Headquarters
+		protoCurrentAgentReply.ShipCount = IntToInt64((*source).ShipCount)
+		pProtoCurrentAgentReply = &protoCurrentAgentReply
+	}
+	return pProtoCurrentAgentReply
+}
 func ConvertStatus(source *api.Status) *proto.ServerStatusReply {
 	var pProtoServerStatusReply *proto.ServerStatusReply
 	if source != nil {

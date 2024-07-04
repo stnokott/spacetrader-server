@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math"
 	"net"
 	"time"
 
@@ -47,6 +48,15 @@ func (s *MockServer) GetServerStatus(_ context.Context, _ *emptypb.Empty) (*pb.S
 				Body:  "The infamous Bar will visit our system soon!",
 			},
 		},
+	}, nil
+}
+
+func (s *MockServer) GetCurrentAgent(_ context.Context, _ *emptypb.Empty) (*pb.CurrentAgentReply, error) {
+	return &pb.CurrentAgentReply{
+		Name:         "STNOKOTT",
+		Credits:      math.MaxInt64,
+		Headquarters: "GITHUB",
+		ShipCount:    42,
 	}, nil
 }
 

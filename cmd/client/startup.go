@@ -72,6 +72,10 @@ func ShowStartupSplash(app fyne.App, next fyne.Window, worker *Worker) {
 			onError("Game connection", err)
 			return
 		}
+		if err := worker.UpdateCurrentAgent(context.TODO()); err != nil {
+			onError("Querying agent info", err)
+			return
+		}
 		w.Close()
 		next.Show()
 	}()

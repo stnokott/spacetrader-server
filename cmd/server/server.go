@@ -65,7 +65,7 @@ func (s *Server) Listen(port int) error {
 }
 
 // Ping is used by clients to ensure this server is online.
-func (s *Server) Ping(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
+func (s *Server) Ping(_ context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
 	return &emptypb.Empty{}, nil
 }
 
@@ -77,4 +77,18 @@ func (s *Server) GetServerStatus(ctx context.Context, _ *emptypb.Empty) (*pb.Ser
 	}
 
 	return convert.ConvertStatus(result), nil
+}
+
+// GetCurrentAgent returns information about the agent identified by the current token.
+func (s *Server) GetCurrentAgent(ctx context.Context, _ *emptypb.Empty) (*pb.CurrentAgentReply, error) {
+	result := new(struct {
+		// for some reason, SpaceTraders decided it's a good idea to wrap the agent
+		// info in a useless "data" field.
+		Data *api.Agent `json:"data"`
+	})
+	if err := get(ctx, s.api, result, "/my/agent", 200); err != nil {
+		return nil, err
+	}
+
+	return convert.ConvertAgent(result.Data), nil
 }

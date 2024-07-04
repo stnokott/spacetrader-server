@@ -19,8 +19,10 @@ func main() {
 	w := a.NewWindow("SpaceTrader " + _version)
 
 	serverInfoBinding := NewTypedBinding[*pb.ServerStatusReply]()
+	agentInfoBinding := NewTypedBinding[*pb.CurrentAgentReply]()
 	headerBindings := HeaderWidgetBindings{
 		ServerStatus: serverInfoBinding,
+		AgentInfo:    agentInfoBinding,
 	}
 
 	header := NewHeaderWidget(headerBindings)
@@ -30,6 +32,7 @@ func main() {
 
 	workerBindings := WorkerBindings{
 		ServerInfo: serverInfoBinding,
+		AgentInfo:  agentInfoBinding,
 	}
 	worker := NewWorker("localhost:55555", workerBindings) // TODO: from config
 	defer worker.Close()

@@ -21,6 +21,7 @@ type HeaderWidget struct {
 // HeaderWidgetBindings contains all bindings for HeaderWidget.
 type HeaderWidgetBindings struct {
 	ServerStatus *TypedBinding[*pb.ServerStatusReply]
+	AgentInfo    *TypedBinding[*pb.CurrentAgentReply]
 }
 
 // NewHeaderWidget creates a new widget to be displayed in the header, containing
@@ -44,6 +45,7 @@ func NewHeaderWidget(bindings HeaderWidgetBindings) *HeaderWidget {
 
 	agentName := widget.NewLabel("n/a")
 	agentName.TextStyle.Bold = true
+	agentName.Alignment = fyne.TextAlignTrailing
 	agentCredits := canvas.NewText("n/a", _colorCredits)
 	agentCredits.Alignment = fyne.TextAlignTrailing
 	agentDetails := container.NewVBox(
@@ -54,6 +56,11 @@ func NewHeaderWidget(bindings HeaderWidgetBindings) *HeaderWidget {
 			canvas.NewText("₡", _colorCredits),
 		),
 	)
+	bindings.AgentInfo.AddListener(func(data *pb.CurrentAgentReply) {
+		agentName.SetText(data.Name)
+		agentCredits.Text = fmtInt(int(data.Credits))
+		agentCredits.Refresh()
+	})
 
 	box := container.NewHBox(
 		gameDetails,

@@ -22,6 +22,7 @@ const _ = grpc.SupportPackageIsVersion8
 const (
 	SpaceTradersService_Ping_FullMethodName            = "/proto.SpaceTradersService/Ping"
 	SpaceTradersService_GetServerStatus_FullMethodName = "/proto.SpaceTradersService/GetServerStatus"
+	SpaceTradersService_GetCurrentAgent_FullMethodName = "/proto.SpaceTradersService/GetCurrentAgent"
 )
 
 // SpaceTradersServiceClient is the client API for SpaceTradersService service.
@@ -30,6 +31,7 @@ const (
 type SpaceTradersServiceClient interface {
 	Ping(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	GetServerStatus(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ServerStatusReply, error)
+	GetCurrentAgent(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*CurrentAgentReply, error)
 }
 
 type spaceTradersServiceClient struct {
@@ -60,12 +62,23 @@ func (c *spaceTradersServiceClient) GetServerStatus(ctx context.Context, in *emp
 	return out, nil
 }
 
+func (c *spaceTradersServiceClient) GetCurrentAgent(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*CurrentAgentReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CurrentAgentReply)
+	err := c.cc.Invoke(ctx, SpaceTradersService_GetCurrentAgent_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SpaceTradersServiceServer is the server API for SpaceTradersService service.
 // All implementations must embed UnimplementedSpaceTradersServiceServer
 // for forward compatibility
 type SpaceTradersServiceServer interface {
 	Ping(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
 	GetServerStatus(context.Context, *emptypb.Empty) (*ServerStatusReply, error)
+	GetCurrentAgent(context.Context, *emptypb.Empty) (*CurrentAgentReply, error)
 	mustEmbedUnimplementedSpaceTradersServiceServer()
 }
 
@@ -78,6 +91,9 @@ func (UnimplementedSpaceTradersServiceServer) Ping(context.Context, *emptypb.Emp
 }
 func (UnimplementedSpaceTradersServiceServer) GetServerStatus(context.Context, *emptypb.Empty) (*ServerStatusReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetServerStatus not implemented")
+}
+func (UnimplementedSpaceTradersServiceServer) GetCurrentAgent(context.Context, *emptypb.Empty) (*CurrentAgentReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetCurrentAgent not implemented")
 }
 func (UnimplementedSpaceTradersServiceServer) mustEmbedUnimplementedSpaceTradersServiceServer() {}
 
@@ -128,6 +144,24 @@ func _SpaceTradersService_GetServerStatus_Handler(srv interface{}, ctx context.C
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SpaceTradersService_GetCurrentAgent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SpaceTradersServiceServer).GetCurrentAgent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SpaceTradersService_GetCurrentAgent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SpaceTradersServiceServer).GetCurrentAgent(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // SpaceTradersService_ServiceDesc is the grpc.ServiceDesc for SpaceTradersService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -142,6 +176,10 @@ var SpaceTradersService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetServerStatus",
 			Handler:    _SpaceTradersService_GetServerStatus_Handler,
+		},
+		{
+			MethodName: "GetCurrentAgent",
+			Handler:    _SpaceTradersService_GetCurrentAgent_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
