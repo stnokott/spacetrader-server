@@ -34,5 +34,26 @@
 			},
 			"problemMatcher": []
 		},
+		{
+			"label": "Start Mock Server",
+			"type": "process",
+			"command": "go",
+			"args": [
+				"run",
+				"./cmd/server/mock"
+			],
+			"isBackground": true,
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": "$go",
+			"group": {
+				"kind": "test",
+				"isDefault": false
+			},
+			"icon": {
+				"id": "server"
+			}
+		}
 	]
 }

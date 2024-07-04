@@ -10,8 +10,6 @@ import (
 	pb "github.com/stnokott/spacetrader/internal/proto"
 )
 
-// TODO: display server metadata during startup splashscreen, not in-app
-
 // Worker communicates with the app server in the background.
 // The queried data is provided via bindings.
 type Worker struct {
