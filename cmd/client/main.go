@@ -40,6 +40,7 @@ func main() {
 	w.SetContent(root)
 	w.Resize(fyne.NewSize(800, 600))
 	w.CenterOnScreen()
+	w.SetMaster()
 
 	ShowStartupSplash(a, w, worker)
 	a.Run()

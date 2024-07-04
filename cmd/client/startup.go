@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -61,12 +62,16 @@ func ShowStartupSplash(app fyne.App, next fyne.Window, worker *Worker) {
 	// start goroutine which attempts to connect to both app and game servers.
 	// only when both connections are successful, we continue with the main application.
 	go func() {
+		// for some unknown reason, we need to give the Fyne app a little time to initialize.
+		// if we dont do this, the splash window is not properly closed.
+		time.Sleep(1 * time.Second)
 		if err := worker.CheckAppServer(context.TODO()); err != nil {
 			onError("App connection", err)
 			return
 		}
 		if err := worker.CheckGameServer(context.TODO()); err != nil {
 			onError("Game connection", err)
+			return
 		}
 		w.Close()
 		next.Show()
