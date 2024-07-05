@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
+	"github.com/stnokott/spacetrader/cmd/client/widgets"
 	pb "github.com/stnokott/spacetrader/internal/proto"
 )
 
@@ -29,7 +30,7 @@ type HeaderWidgetBindings struct {
 func NewHeaderWidget(bindings HeaderWidgetBindings) *HeaderWidget {
 	gameVersion := widget.NewLabel("n/a")
 	gameVersion.TextStyle.Bold = true
-	nextReset := NewUpdatingLabel(
+	nextReset := widgets.NewUpdatingLabel(
 		time.Time{},
 		1*time.Second,
 		formatNextReset,
