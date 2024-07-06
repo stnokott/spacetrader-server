@@ -9,57 +9,57 @@ import (
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func ConvertAgent(source *api.Agent) *proto.CurrentAgentReply {
-	var pProtoCurrentAgentReply *proto.CurrentAgentReply
+func ConvertAgent(source *api.Agent) *proto.Agent {
+	var pProtoAgent *proto.Agent
 	if source != nil {
-		var protoCurrentAgentReply proto.CurrentAgentReply
-		protoCurrentAgentReply.Name = (*source).Symbol
-		protoCurrentAgentReply.Credits = (*source).Credits
-		protoCurrentAgentReply.Headquarters = (*source).Headquarters
-		protoCurrentAgentReply.ShipCount = IntToInt64((*source).ShipCount)
-		pProtoCurrentAgentReply = &protoCurrentAgentReply
+		var protoAgent proto.Agent
+		protoAgent.Name = (*source).Symbol
+		protoAgent.Credits = (*source).Credits
+		protoAgent.Headquarters = (*source).Headquarters
+		protoAgent.ShipCount = IntToInt64((*source).ShipCount)
+		pProtoAgent = &protoAgent
 	}
-	return pProtoCurrentAgentReply
+	return pProtoAgent
 }
-func ConvertStatus(source *api.Status) *proto.ServerStatusReply {
-	var pProtoServerStatusReply *proto.ServerStatusReply
+func ConvertStatus(source *api.Status) *proto.ServerStatus {
+	var pProtoServerStatus *proto.ServerStatus
 	if source != nil {
-		var protoServerStatusReply proto.ServerStatusReply
-		protoServerStatusReply.Version = (*source).Version
-		protoServerStatusReply.LastReset = timestamppb.New((*source).LastReset.Time)
-		protoServerStatusReply.NextReset = timestamppb.New((*source).Resets.Next)
-		protoServerStatusReply_GlobalStats := unnamedToProtoServerStatusReply_GlobalStats((*source).Statistics)
-		protoServerStatusReply.GlobalStats = &protoServerStatusReply_GlobalStats
+		var protoServerStatus proto.ServerStatus
+		protoServerStatus.Version = (*source).Version
+		protoServerStatus.LastReset = timestamppb.New((*source).LastReset.Time)
+		protoServerStatus.NextReset = timestamppb.New((*source).Resets.Next)
+		protoServerStatus_GlobalStats := unnamedToProtoServerStatus_GlobalStats((*source).Statistics)
+		protoServerStatus.GlobalStats = &protoServerStatus_GlobalStats
 		if (*source).Announcements != nil {
-			protoServerStatusReply.Announcements = make([]*proto.ServerStatusReply_Announcement, len((*source).Announcements))
+			protoServerStatus.Announcements = make([]*proto.ServerStatus_Announcement, len((*source).Announcements))
 			for i := 0; i < len((*source).Announcements); i++ {
-				protoServerStatusReply_Announcement := unnamedToProtoServerStatusReply_Announcement((*source).Announcements[i])
-				protoServerStatusReply.Announcements[i] = &protoServerStatusReply_Announcement
+				protoServerStatus_Announcement := unnamedToProtoServerStatus_Announcement((*source).Announcements[i])
+				protoServerStatus.Announcements[i] = &protoServerStatus_Announcement
 			}
 		}
-		pProtoServerStatusReply = &protoServerStatusReply
+		pProtoServerStatus = &protoServerStatus
 	}
-	return pProtoServerStatusReply
+	return pProtoServerStatus
 }
-func unnamedToProtoServerStatusReply_Announcement(source struct {
+func unnamedToProtoServerStatus_Announcement(source struct {
 	Title string `json:"title"`
 	Body  string `json:"body"`
-}) proto.ServerStatusReply_Announcement {
-	var protoServerStatusReply_Announcement proto.ServerStatusReply_Announcement
-	protoServerStatusReply_Announcement.Title = source.Title
-	protoServerStatusReply_Announcement.Body = source.Body
-	return protoServerStatusReply_Announcement
+}) proto.ServerStatus_Announcement {
+	var protoServerStatus_Announcement proto.ServerStatus_Announcement
+	protoServerStatus_Announcement.Title = source.Title
+	protoServerStatus_Announcement.Body = source.Body
+	return protoServerStatus_Announcement
 }
-func unnamedToProtoServerStatusReply_GlobalStats(source struct {
+func unnamedToProtoServerStatus_GlobalStats(source struct {
 	Agents    int64 `json:"agents"`
 	Ships     int64 `json:"ships"`
 	Waypoints int64 `json:"waypoints"`
 	Systems   int64 `json:"systems"`
-}) proto.ServerStatusReply_GlobalStats {
-	var protoServerStatusReply_GlobalStats proto.ServerStatusReply_GlobalStats
-	protoServerStatusReply_GlobalStats.Agents = source.Agents
-	protoServerStatusReply_GlobalStats.Ships = source.Ships
-	protoServerStatusReply_GlobalStats.Waypoints = source.Waypoints
-	protoServerStatusReply_GlobalStats.Systems = source.Systems
-	return protoServerStatusReply_GlobalStats
+}) proto.ServerStatus_GlobalStats {
+	var protoServerStatus_GlobalStats proto.ServerStatus_GlobalStats
+	protoServerStatus_GlobalStats.Agents = source.Agents
+	protoServerStatus_GlobalStats.Ships = source.Ships
+	protoServerStatus_GlobalStats.Waypoints = source.Waypoints
+	protoServerStatus_GlobalStats.Systems = source.Systems
+	return protoServerStatus_GlobalStats
 }

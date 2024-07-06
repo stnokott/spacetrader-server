@@ -21,8 +21,8 @@ type HeaderWidget struct {
 
 // HeaderWidgetBindings contains all bindings for HeaderWidget.
 type HeaderWidgetBindings struct {
-	ServerStatus *TypedBinding[*pb.ServerStatusReply]
-	AgentInfo    *TypedBinding[*pb.CurrentAgentReply]
+	ServerStatus *TypedBinding[*pb.ServerStatus]
+	AgentInfo    *TypedBinding[*pb.Agent]
 }
 
 // NewHeaderWidget creates a new widget to be displayed in the header, containing
@@ -39,7 +39,7 @@ func NewHeaderWidget(bindings HeaderWidgetBindings) *HeaderWidget {
 		gameVersion,
 		nextReset,
 	)
-	bindings.ServerStatus.AddListener(func(data *pb.ServerStatusReply) {
+	bindings.ServerStatus.AddListener(func(data *pb.ServerStatus) {
 		gameVersion.SetText("Game API " + data.Version)
 		nextReset.SetValue(data.NextReset.AsTime())
 	})
@@ -57,7 +57,7 @@ func NewHeaderWidget(bindings HeaderWidgetBindings) *HeaderWidget {
 			canvas.NewText("₡", _colorCredits),
 		),
 	)
-	bindings.AgentInfo.AddListener(func(data *pb.CurrentAgentReply) {
+	bindings.AgentInfo.AddListener(func(data *pb.Agent) {
 		agentName.SetText(data.Name)
 		agentCredits.Text = fmtInt(int(data.Credits))
 		agentCredits.Refresh()

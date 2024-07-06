@@ -27,18 +27,18 @@ func (s *MockServer) Ping(_ context.Context, _ *emptypb.Empty) (*emptypb.Empty, 
 	return &emptypb.Empty{}, nil
 }
 
-func (s *MockServer) GetServerStatus(_ context.Context, _ *emptypb.Empty) (*pb.ServerStatusReply, error) {
-	return &pb.ServerStatusReply{
+func (s *MockServer) GetServerStatus(_ context.Context, _ *emptypb.Empty) (*pb.ServerStatus, error) {
+	return &pb.ServerStatus{
 		Version:   "v1.2.3",
 		LastReset: timestamppb.New(time.Now().Add(-5 * 24 * time.Hour)),
 		NextReset: timestamppb.New(time.Now().Add(1 * 24 * time.Hour)),
-		GlobalStats: &pb.ServerStatusReply_GlobalStats{
+		GlobalStats: &pb.ServerStatus_GlobalStats{
 			Agents:    123,
 			Ships:     456,
 			Waypoints: 999999,
 			Systems:   12345678,
 		},
-		Announcements: []*pb.ServerStatusReply_Announcement{
+		Announcements: []*pb.ServerStatus_Announcement{
 			{
 				Title: "Foo expected to return",
 				Body:  "Foo is expected to make a fuzzy return!",
@@ -51,8 +51,8 @@ func (s *MockServer) GetServerStatus(_ context.Context, _ *emptypb.Empty) (*pb.S
 	}, nil
 }
 
-func (s *MockServer) GetCurrentAgent(_ context.Context, _ *emptypb.Empty) (*pb.CurrentAgentReply, error) {
-	return &pb.CurrentAgentReply{
+func (s *MockServer) GetCurrentAgent(_ context.Context, _ *emptypb.Empty) (*pb.Agent, error) {
+	return &pb.Agent{
 		Name:         "STNOKOTT",
 		Credits:      math.MaxInt64,
 		Headquarters: "GITHUB",

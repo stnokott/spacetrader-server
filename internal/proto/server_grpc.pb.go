@@ -30,8 +30,8 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type SpaceTradersServiceClient interface {
 	Ping(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	GetServerStatus(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ServerStatusReply, error)
-	GetCurrentAgent(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*CurrentAgentReply, error)
+	GetServerStatus(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ServerStatus, error)
+	GetCurrentAgent(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Agent, error)
 }
 
 type spaceTradersServiceClient struct {
@@ -52,9 +52,9 @@ func (c *spaceTradersServiceClient) Ping(ctx context.Context, in *emptypb.Empty,
 	return out, nil
 }
 
-func (c *spaceTradersServiceClient) GetServerStatus(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ServerStatusReply, error) {
+func (c *spaceTradersServiceClient) GetServerStatus(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ServerStatus, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ServerStatusReply)
+	out := new(ServerStatus)
 	err := c.cc.Invoke(ctx, SpaceTradersService_GetServerStatus_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -62,9 +62,9 @@ func (c *spaceTradersServiceClient) GetServerStatus(ctx context.Context, in *emp
 	return out, nil
 }
 
-func (c *spaceTradersServiceClient) GetCurrentAgent(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*CurrentAgentReply, error) {
+func (c *spaceTradersServiceClient) GetCurrentAgent(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Agent, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(CurrentAgentReply)
+	out := new(Agent)
 	err := c.cc.Invoke(ctx, SpaceTradersService_GetCurrentAgent_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -77,8 +77,8 @@ func (c *spaceTradersServiceClient) GetCurrentAgent(ctx context.Context, in *emp
 // for forward compatibility
 type SpaceTradersServiceServer interface {
 	Ping(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
-	GetServerStatus(context.Context, *emptypb.Empty) (*ServerStatusReply, error)
-	GetCurrentAgent(context.Context, *emptypb.Empty) (*CurrentAgentReply, error)
+	GetServerStatus(context.Context, *emptypb.Empty) (*ServerStatus, error)
+	GetCurrentAgent(context.Context, *emptypb.Empty) (*Agent, error)
 	mustEmbedUnimplementedSpaceTradersServiceServer()
 }
 
@@ -89,10 +89,10 @@ type UnimplementedSpaceTradersServiceServer struct {
 func (UnimplementedSpaceTradersServiceServer) Ping(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
 }
-func (UnimplementedSpaceTradersServiceServer) GetServerStatus(context.Context, *emptypb.Empty) (*ServerStatusReply, error) {
+func (UnimplementedSpaceTradersServiceServer) GetServerStatus(context.Context, *emptypb.Empty) (*ServerStatus, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetServerStatus not implemented")
 }
-func (UnimplementedSpaceTradersServiceServer) GetCurrentAgent(context.Context, *emptypb.Empty) (*CurrentAgentReply, error) {
+func (UnimplementedSpaceTradersServiceServer) GetCurrentAgent(context.Context, *emptypb.Empty) (*Agent, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetCurrentAgent not implemented")
 }
 func (UnimplementedSpaceTradersServiceServer) mustEmbedUnimplementedSpaceTradersServiceServer() {}

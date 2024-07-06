@@ -9,11 +9,11 @@ package proto;
 
 service SpaceTradersService {
 	rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty);
-	rpc GetServerStatus(google.protobuf.Empty) returns (ServerStatusReply);
-	rpc GetCurrentAgent(google.protobuf.Empty) returns (CurrentAgentReply);
+	rpc GetServerStatus(google.protobuf.Empty) returns (ServerStatus);
+	rpc GetCurrentAgent(google.protobuf.Empty) returns (Agent);
 }
 
-message ServerStatusReply {
+message ServerStatus {
 	string version = 1;
 	google.protobuf.Timestamp last_reset = 2;
 	google.protobuf.Timestamp next_reset = 3;
@@ -34,7 +34,7 @@ message ServerStatusReply {
 	repeated Announcement announcements = 5;
 }
 
-message CurrentAgentReply {
+message Agent {
 	string name = 1;
 	int64 credits = 2;
 	string headquarters = 3;

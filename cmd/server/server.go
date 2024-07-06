@@ -70,7 +70,7 @@ func (s *Server) Ping(_ context.Context, _ *emptypb.Empty) (*emptypb.Empty, erro
 }
 
 // GetServerStatus returns the current server status and some statistics.
-func (s *Server) GetServerStatus(ctx context.Context, _ *emptypb.Empty) (*pb.ServerStatusReply, error) {
+func (s *Server) GetServerStatus(ctx context.Context, _ *emptypb.Empty) (*pb.ServerStatus, error) {
 	result := new(api.Status)
 	if err := get(ctx, s.api, result, "/", 200); err != nil {
 		return nil, err
@@ -80,7 +80,7 @@ func (s *Server) GetServerStatus(ctx context.Context, _ *emptypb.Empty) (*pb.Ser
 }
 
 // GetCurrentAgent returns information about the agent identified by the current token.
-func (s *Server) GetCurrentAgent(ctx context.Context, _ *emptypb.Empty) (*pb.CurrentAgentReply, error) {
+func (s *Server) GetCurrentAgent(ctx context.Context, _ *emptypb.Empty) (*pb.Agent, error) {
 	result := new(struct {
 		// for some reason, SpaceTraders decided it's a good idea to wrap the agent
 		// info in a useless "data" field.

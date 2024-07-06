@@ -20,8 +20,8 @@ func main() {
 
 	w := a.NewWindow("SpaceTrader " + _version)
 
-	serverInfoBinding := NewTypedBinding[*pb.ServerStatusReply]()
-	agentInfoBinding := NewTypedBinding[*pb.CurrentAgentReply]()
+	serverInfoBinding := NewTypedBinding[*pb.ServerStatus]()
+	agentInfoBinding := NewTypedBinding[*pb.Agent]()
 	headerBindings := HeaderWidgetBindings{
 		ServerStatus: serverInfoBinding,
 		AgentInfo:    agentInfoBinding,

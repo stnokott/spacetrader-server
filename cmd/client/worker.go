@@ -21,8 +21,8 @@ type Worker struct {
 
 // WorkerBindings contains all bindings required for a Worker instance.
 type WorkerBindings struct {
-	ServerInfo *TypedBinding[*pb.ServerStatusReply]
-	AgentInfo  *TypedBinding[*pb.CurrentAgentReply]
+	ServerInfo *TypedBinding[*pb.ServerStatus]
+	AgentInfo  *TypedBinding[*pb.Agent]
 }
 
 // NewWorker creates a new worker instance.
@@ -46,6 +46,11 @@ func NewWorker(addr string, bindings WorkerBindings) *Worker {
 	}
 }
 
+// Close closes all gRPC connections.
+func (w *Worker) Close() error {
+	return w.conn.Close()
+}
+
 // CheckAppServer pings the app server and returns any error it encounters.
 func (w *Worker) CheckAppServer(ctx context.Context) error {
 	_, err := w.client.Ping(ctx, nil)
@@ -64,6 +69,7 @@ func (w *Worker) UpdateServerInfo(ctx context.Context) error {
 	return nil
 }
 
+// UpdateCurrentAgent updates the information about the current agent.
 func (w *Worker) UpdateCurrentAgent(ctx context.Context) error {
 	agent, err := w.client.GetCurrentAgent(ctx, nil)
 	if err != nil {
@@ -71,9 +77,4 @@ func (w *Worker) UpdateCurrentAgent(ctx context.Context) error {
 	}
 	w.bindings.AgentInfo.Set(agent)
 	return nil
-}
-
-// Close closes all gRPC connections.
-func (w *Worker) Close() error {
-	return w.conn.Close()
 }

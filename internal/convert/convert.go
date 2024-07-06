@@ -20,10 +20,10 @@ type Converter interface {
 	// goverter:map LastReset.Time LastReset | google.golang.org/protobuf/types/known/timestamppb:New
 	// goverter:map Resets.Next NextReset | google.golang.org/protobuf/types/known/timestamppb:New
 	// goverter:map Statistics GlobalStats
-	ConvertStatus(source *api.Status) *pb.ServerStatusReply
+	ConvertStatus(source *api.Status) *pb.ServerStatus
 
 	// goverter:map Symbol Name
-	ConvertAgent(source *api.Agent) *pb.CurrentAgentReply
+	ConvertAgent(source *api.Agent) *pb.Agent
 }
 
 // IntToInt64 casts an int to an int64.
