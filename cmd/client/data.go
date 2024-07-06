@@ -10,7 +10,7 @@ import "sync"
 type TypedBinding[T any] struct {
 	data      T
 	listeners []func(T)
-	m         sync.RWMutex
+	m         sync.Mutex
 }
 
 // NewTypedBinding creates a new binding for the type T.
@@ -30,8 +30,8 @@ func (b *TypedBinding[T]) Set(data T) {
 
 // Get returns the internal representation of the data.
 func (b *TypedBinding[T]) Get() T {
-	b.m.RLock()
-	defer b.m.RUnlock()
+	b.m.Lock()
+	defer b.m.Unlock()
 	return b.data
 }
 

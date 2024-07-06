@@ -18,7 +18,7 @@ type UpdatingLabel[T any] struct {
 	label *widget.Label
 
 	v T
-	m sync.RWMutex
+	m sync.Mutex
 }
 
 // NewUpdatingLabel creates a new instance of UpdatingLabel.
@@ -38,9 +38,9 @@ func NewUpdatingLabel[T any](
 
 	go func() {
 		for range time.Tick(interval) {
-			l.m.RLock()
+			l.m.Lock()
 			updateFunc(l.label, l.v)
-			l.m.RUnlock()
+			l.m.Unlock()
 		}
 	}()
 	return l
@@ -52,6 +52,8 @@ func (l *UpdatingLabel[T]) CreateRenderer() fyne.WidgetRenderer {
 }
 
 // SetValue updates the underlying value that is passed to the update function every interval.
+//
+// Do not call this function from the update function of this label, it will cause a deadlock.
 func (l *UpdatingLabel[T]) SetValue(v T) {
 	l.m.Lock()
 	l.v = v
