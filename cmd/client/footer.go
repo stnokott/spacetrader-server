@@ -21,9 +21,12 @@ func NewFooterWidget() *FooterWidget {
 	version.Alignment = fyne.TextAlignTrailing
 	version.Importance = widget.LowImportance
 
-	box := container.NewHBox(
-		layout.NewSpacer(),
-		version,
+	box := container.NewVBox(
+		widget.NewSeparator(),
+		container.NewHBox(
+			layout.NewSpacer(),
+			version,
+		),
 	)
 
 	f := &FooterWidget{
