@@ -3,12 +3,22 @@ package mocks
 import (
 	"time"
 
+	"github.com/jinzhu/copier"
 	pb "github.com/stnokott/spacetrader/internal/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// DefaultShip is a simple ship mock for testing
-var DefaultShip = &pb.Ship{
+// NewDefaultShip creates a new instance of the default ship, ready to be modified freely.
+func NewDefaultShip() *pb.Ship {
+	ship := new(pb.Ship)
+	if err := copier.CopyWithOption(ship, defaultShip, copier.Option{DeepCopy: true}); err != nil {
+		// only called during testing, so panicking is ok
+		panic(err)
+	}
+	return ship
+}
+
+var defaultShip = &pb.Ship{
 	Id:   "STNOKOTT-1",
 	Name: "STNOKOTT-1",
 	Role: pb.Ship_COMMAND,
