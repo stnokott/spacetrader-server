@@ -7,13 +7,14 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
+	"github.com/stnokott/spacetrader/cmd/client/theme"
 	"github.com/stnokott/spacetrader/cmd/client/widgets"
 	pb "github.com/stnokott/spacetrader/internal/proto"
 )
 
 const _version = "v0.0.0" // TODO: from build
 
-var currentTheme = &Theme{}
+var currentTheme = &theme.Theme{}
 
 func main() {
 	a := app.NewWithID("github.com/stnokott/spacetrader")
@@ -37,10 +38,7 @@ func main() {
 	}
 	shipList := widgets.NewShipList(shipListBindings)
 
-	mainLayout := container.NewBorder(header, footer, nil, nil, shipList)
-	fleetBinding.AddListener(func(_ *pb.Fleet) {
-		mainLayout.Refresh()
-	})
+	mainLayout := container.NewBorder(header, footer, shipList, nil)
 
 	loadingOverlay := NewLoadingOverlay()
 	root := container.NewStack(

@@ -1,4 +1,5 @@
-package main
+// Package theme provides custom colors and a theme for the app.
+package theme
 
 import (
 	"image/color"
@@ -9,13 +10,20 @@ import (
 )
 
 var (
-	_colorBg      = color.RGBA{35, 49, 66, 255}
-	_colorFg      = color.RGBA{227, 227, 227, 255}
-	_colorPrimary = color.RGBA{249, 89, 89, 255}
-	_colorCredits = color.RGBA{234, 250, 90, 255}
-	_colorSuccess = color.RGBA{59, 201, 49, 255}
-	_colorWarning = color.RGBA{250, 159, 90, 255}
-	_colorError   = _colorPrimary
+	// ColorBg is the background color.
+	ColorBg = color.RGBA{35, 49, 66, 255}
+	// ColorFg is the foreground color, mostly used for text.
+	ColorFg = color.RGBA{227, 227, 227, 255}
+	// ColorPrimary is the accent color.
+	ColorPrimary = color.RGBA{249, 89, 89, 255}
+	// ColorCredits is the color for displaying monetary values.
+	ColorCredits = color.RGBA{234, 250, 90, 255}
+	// ColorSuccess is used for displaying messages related to success.
+	ColorSuccess = color.RGBA{59, 201, 49, 255}
+	// ColorWarning is used for displaying messages related to warnings.
+	ColorWarning = color.RGBA{250, 159, 90, 255}
+	// ColorError is used for displaying messages related to errors.
+	ColorError = ColorPrimary
 )
 
 // Theme implements fyne.Theme.
@@ -29,17 +37,17 @@ func (Theme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant) color.Co
 	if variant == theme.VariantDark {
 		switch name {
 		case theme.ColorNameBackground:
-			return _colorBg
+			return ColorBg
 		case theme.ColorNameForeground:
-			return _colorFg
+			return ColorFg
 		case theme.ColorNamePrimary:
-			return _colorPrimary
+			return ColorPrimary
 		case theme.ColorNameSuccess:
-			return _colorSuccess
+			return ColorSuccess
 		case theme.ColorNameWarning:
-			return _colorWarning
+			return ColorWarning
 		case theme.ColorNameError:
-			return _colorError
+			return ColorError
 		case theme.ColorNameDisabled:
 			return color.RGBA{69, 93, 122, 255} // #455d7a
 		case theme.ColorNameFocus:

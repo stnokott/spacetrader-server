@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
+	"github.com/stnokott/spacetrader/cmd/client/theme"
 	"github.com/stnokott/spacetrader/cmd/client/widgets"
 	pb "github.com/stnokott/spacetrader/internal/proto"
 )
@@ -47,14 +48,14 @@ func NewHeaderWidget(bindings HeaderWidgetBindings) *HeaderWidget {
 	agentName := widget.NewLabel("n/a")
 	agentName.TextStyle.Bold = true
 	agentName.Alignment = fyne.TextAlignTrailing
-	agentCredits := canvas.NewText("n/a", _colorCredits)
+	agentCredits := canvas.NewText("n/a", theme.ColorCredits)
 	agentCredits.Alignment = fyne.TextAlignTrailing
 	agentDetails := container.NewVBox(
 		agentName,
 		container.NewHBox(
 			layout.NewSpacer(),
 			agentCredits,
-			canvas.NewText("₡", _colorCredits),
+			canvas.NewText("₡", theme.ColorCredits),
 		),
 	)
 	bindings.AgentInfo.AddListener(func(data *pb.Agent) {
