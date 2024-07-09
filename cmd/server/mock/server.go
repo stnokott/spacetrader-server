@@ -62,8 +62,13 @@ func (s *MockServer) GetCurrentAgent(_ context.Context, _ *emptypb.Empty) (*pb.A
 }
 
 func (s *MockServer) GetFleet(_ context.Context, _ *emptypb.Empty) (*pb.Fleet, error) {
+	ship1 := mocks.NewDefaultShip()
+	ship1.Name = "Enterprise"
+	ship2 := mocks.NewDefaultShip()
+	ship2.Name = "Pod Racer"
+
 	return &pb.Fleet{Ships: []*pb.Ship{
-		mocks.NewDefaultShip(),
+		ship1, ship2,
 	}}, nil
 }
 
