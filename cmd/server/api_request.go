@@ -15,13 +15,13 @@ func beforeRequest(c *resty.Client, r *resty.Request) error {
 }
 
 // get is a generic utility function for reducing boilerplate client code.
-func get[T any](ctx context.Context, rest *resty.Client, dst T, path string, expectedStatus int) (err error) {
+func (s *Server) get(ctx context.Context, dst any, path string, expectedStatus int) (err error) {
 	defer func() {
 		if err != nil {
 			log.Error(err)
 		}
 	}()
-	req := rest.R().SetResult(dst)
+	req := s.api.R().SetResult(dst)
 	var resp *resty.Response
 	resp, err = req.SetContext(ctx).Get(path)
 	if err != nil {

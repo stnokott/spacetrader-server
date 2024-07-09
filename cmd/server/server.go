@@ -72,7 +72,7 @@ func (s *Server) Ping(_ context.Context, _ *emptypb.Empty) (*emptypb.Empty, erro
 // GetServerStatus returns the current server status and some statistics.
 func (s *Server) GetServerStatus(ctx context.Context, _ *emptypb.Empty) (*pb.ServerStatus, error) {
 	result := new(api.Status)
-	if err := get(ctx, s.api, result, "/", 200); err != nil {
+	if err := s.get(ctx, result, "/", 200); err != nil {
 		return nil, err
 	}
 
@@ -86,9 +86,52 @@ func (s *Server) GetCurrentAgent(ctx context.Context, _ *emptypb.Empty) (*pb.Age
 		// info in a useless "data" field.
 		Data *api.Agent `json:"data"`
 	})
-	if err := get(ctx, s.api, result, "/my/agent", 200); err != nil {
+	if err := s.get(ctx, result, "/my/agent", 200); err != nil {
 		return nil, err
 	}
 
-	return convert.ConvertAgent(result.Data), nil
+	return convert.ConvertAgent(result.Data)
+}
+
+// GetFleet returns the complete list of ships in the agent's posession.
+func (s *Server) GetFleet(ctx context.Context, _ *emptypb.Empty) (*pb.Fleet, error) {
+	// we need the total ship count to enable allocation of the correct slice size
+	agent, err := s.GetCurrentAgent(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*pb.Ship, agent.ShipCount)
+
+	n := 0
+	page := 1
+	perPage := 10
+	for n < len(out) {
+		ships, err := s.getFleetPaginated(ctx, page, perPage)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, ship := range ships {
+			shipConverted, err := convert.ConvertShip(ship)
+			if err != nil {
+				return nil, err
+			}
+			out[n] = shipConverted
+			n++
+		}
+		page++
+	}
+	return &pb.Fleet{Ships: out}, nil
+}
+
+func (s *Server) getFleetPaginated(ctx context.Context, page int, limit int) ([]*api.Ship, error) {
+	url := fmt.Sprintf("/my/ships?page=%d&limit=%d", page, limit)
+
+	result := new(struct {
+		Data []*api.Ship `json:"data"`
+	})
+	if err := s.get(ctx, result, url, 200); err != nil {
+		return nil, err
+	}
+	return result.Data, nil
 }

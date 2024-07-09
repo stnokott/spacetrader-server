@@ -10,6 +10,7 @@ import (
 	"time"
 
 	pb "github.com/stnokott/spacetrader/internal/proto"
+	"github.com/stnokott/spacetrader/tests/mocks"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -58,6 +59,12 @@ func (s *MockServer) GetCurrentAgent(_ context.Context, _ *emptypb.Empty) (*pb.A
 		Headquarters: "GITHUB",
 		ShipCount:    42,
 	}, nil
+}
+
+func (s *MockServer) GetFleet(_ context.Context, _ *emptypb.Empty) (*pb.Fleet, error) {
+	return &pb.Fleet{Ships: []*pb.Ship{
+		mocks.DefaultShip,
+	}}, nil
 }
 
 func main() {

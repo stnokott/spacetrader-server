@@ -2,11 +2,13 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
+	"github.com/stnokott/spacetrader/cmd/client/widgets"
 	pb "github.com/stnokott/spacetrader/internal/proto"
 )
 
@@ -21,8 +23,9 @@ type Worker struct {
 
 // WorkerBindings contains all bindings required for a Worker instance.
 type WorkerBindings struct {
-	ServerInfo *TypedBinding[*pb.ServerStatus]
-	AgentInfo  *TypedBinding[*pb.Agent]
+	Server *widgets.TypedBinding[*pb.ServerStatus]
+	Agent  *widgets.TypedBinding[*pb.Agent]
+	Fleet  *widgets.TypedBinding[*pb.Fleet]
 }
 
 // NewWorker creates a new worker instance.
@@ -63,9 +66,9 @@ func (w *Worker) CheckAppServer(ctx context.Context) error {
 func (w *Worker) UpdateServerInfo(ctx context.Context) error {
 	status, err := w.client.GetServerStatus(ctx, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("get server status: %w", err)
 	}
-	w.bindings.ServerInfo.Set(status)
+	w.bindings.Server.Set(status)
 	return nil
 }
 
@@ -73,8 +76,18 @@ func (w *Worker) UpdateServerInfo(ctx context.Context) error {
 func (w *Worker) UpdateCurrentAgent(ctx context.Context) error {
 	agent, err := w.client.GetCurrentAgent(ctx, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("get current agent: %w", err)
 	}
-	w.bindings.AgentInfo.Set(agent)
+	w.bindings.Agent.Set(agent)
+	return nil
+}
+
+// UpdateFleet updates the current agent's ships.
+func (w *Worker) UpdateFleet(ctx context.Context) error {
+	fleet, err := w.client.GetFleet(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("get fleet: %w", err)
+	}
+	w.bindings.Fleet.Set(fleet)
 	return nil
 }

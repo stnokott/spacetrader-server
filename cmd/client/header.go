@@ -21,8 +21,8 @@ type HeaderWidget struct {
 
 // HeaderWidgetBindings contains all bindings for HeaderWidget.
 type HeaderWidgetBindings struct {
-	ServerStatus *TypedBinding[*pb.ServerStatus]
-	AgentInfo    *TypedBinding[*pb.Agent]
+	ServerStatus *widgets.TypedBinding[*pb.ServerStatus]
+	AgentInfo    *widgets.TypedBinding[*pb.Agent]
 }
 
 // NewHeaderWidget creates a new widget to be displayed in the header, containing
@@ -63,10 +63,13 @@ func NewHeaderWidget(bindings HeaderWidgetBindings) *HeaderWidget {
 		agentCredits.Refresh()
 	})
 
-	box := container.NewHBox(
-		gameDetails,
-		layout.NewSpacer(),
-		agentDetails,
+	box := container.NewVBox(
+		container.NewHBox(
+			gameDetails,
+			layout.NewSpacer(),
+			agentDetails,
+		),
+		widget.NewSeparator(),
 	)
 	h := &HeaderWidget{
 		root: box,

@@ -7,6 +7,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
+	"github.com/stnokott/spacetrader/cmd/client/widgets"
 	pb "github.com/stnokott/spacetrader/internal/proto"
 )
 
@@ -20,25 +21,37 @@ func main() {
 
 	w := a.NewWindow("SpaceTrader " + _version)
 
-	serverInfoBinding := NewTypedBinding[*pb.ServerStatus]()
-	agentInfoBinding := NewTypedBinding[*pb.Agent]()
+	serverBinding := widgets.NewTypedBinding[*pb.ServerStatus]()
+	agentBinding := widgets.NewTypedBinding[*pb.Agent]()
 	headerBindings := HeaderWidgetBindings{
-		ServerStatus: serverInfoBinding,
-		AgentInfo:    agentInfoBinding,
+		ServerStatus: serverBinding,
+		AgentInfo:    agentBinding,
 	}
 
 	header := NewHeaderWidget(headerBindings)
 	footer := NewFooterWidget()
 
+	fleetBinding := widgets.NewTypedBinding[*pb.Fleet]()
+	shipListBindings := widgets.ShipListBindings{
+		Fleet: fleetBinding,
+	}
+	shipList := widgets.NewShipList(shipListBindings)
+
+	mainLayout := container.NewBorder(header, footer, nil, nil, shipList)
+	fleetBinding.AddListener(func(_ *pb.Fleet) {
+		mainLayout.Refresh()
+	})
+
 	loadingOverlay := NewLoadingOverlay()
 	root := container.NewStack(
-		container.NewBorder(header, footer, nil, nil),
+		mainLayout,
 		loadingOverlay,
 	)
 
 	workerBindings := WorkerBindings{
-		ServerInfo: serverInfoBinding,
-		AgentInfo:  agentInfoBinding,
+		Server: serverBinding,
+		Agent:  agentBinding,
+		Fleet:  fleetBinding,
 	}
 	worker := NewWorker("localhost:55555", workerBindings) // TODO: from config
 	defer worker.Close()
@@ -58,6 +71,9 @@ func main() {
 		}},
 		Job{"retrieving agent info", func() error {
 			return worker.UpdateCurrentAgent(context.TODO())
+		}},
+		Job{"retrieving fleet", func() error {
+			return worker.UpdateFleet(context.TODO())
 		}},
 	)
 	a.Run()

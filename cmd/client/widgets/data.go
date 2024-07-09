@@ -1,4 +1,4 @@
-package main
+package widgets
 
 import "sync"
 
@@ -7,6 +7,7 @@ import "sync"
 //
 // It shares the listener functionality, but builds on top of it by passing
 // the changed value to the listener.
+// TODO: expose interface instead of struct (simplifies referencing)
 type TypedBinding[T any] struct {
 	data      T
 	listeners []func(T)
