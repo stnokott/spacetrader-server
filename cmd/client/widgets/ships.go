@@ -75,7 +75,6 @@ func (l *ShipList) onFleetUpdate(data *pb.Fleet) {
 	l.m.Lock()
 	l.items = ships
 	l.m.Unlock()
-	l.list.Refresh()
 }
 func (l *ShipList) length() int {
 	l.m.RLock()
@@ -126,4 +125,9 @@ func (li *ShipListItem) CreateRenderer() fyne.WidgetRenderer {
 // SetShipName sets the displayed name of the ship.
 func (li *ShipListItem) SetShipName(s string) {
 	li.label.SetText(s)
+}
+
+// GetShipName returns the displayed name of the ship.
+func (li *ShipListItem) GetShipName() string {
+	return li.label.Text
 }

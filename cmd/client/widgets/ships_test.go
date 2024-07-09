@@ -3,7 +3,6 @@ package widgets
 import (
 	"testing"
 
-	"fyne.io/fyne/v2/widget"
 	"github.com/stretchr/testify/assert"
 
 	pb "github.com/stnokott/spacetrader/internal/proto"
@@ -23,9 +22,9 @@ func TestShipsList(t *testing.T) {
 		assert.Equal(t, shipList.list.Length(), n)
 	}
 	expectItemTextAt := func(i int, text string) {
-		lbl := widget.NewLabel("n/a")
+		lbl := NewShipListItem()
 		shipList.list.UpdateItem(i, lbl)
-		assert.Equal(t, text, lbl.Text)
+		assert.Equal(t, text, lbl.GetShipName())
 	}
 
 	// items should be empty when first created
