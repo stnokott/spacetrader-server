@@ -4,6 +4,8 @@ import (
 	"sync"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
 	pb "github.com/stnokott/spacetrader/internal/proto"
@@ -66,17 +68,15 @@ func (l *ShipList) onFleetUpdate(data *pb.Fleet) {
 		l.m.RUnlock()
 		if isNewItem || isUpdatedItem {
 			ships[i] = model
-			// defer since we don't update the underyling slice untilt the end of this function
-			defer l.list.RefreshItem(i)
 		} else {
 			ships[i] = l.items[i]
 		}
 	}
 	l.m.Lock()
-	defer l.m.Unlock()
 	l.items = ships
+	l.m.Unlock()
+	l.list.Refresh()
 }
-
 func (l *ShipList) length() int {
 	l.m.RLock()
 	defer l.m.RUnlock()
@@ -84,11 +84,46 @@ func (l *ShipList) length() int {
 }
 
 func (l *ShipList) createItem() fyne.CanvasObject {
-	return widget.NewLabel("n/a")
+	return NewShipListItem()
 }
 
 func (l *ShipList) updateItem(i widget.ListItemID, o fyne.CanvasObject) {
+	li := o.(*ShipListItem)
 	l.m.RLock()
-	o.(*widget.Label).SetText(l.items[i].Name)
+	li.SetShipName(l.items[i].Name)
 	l.m.RUnlock()
+}
+
+// ShipListItem displays information about a single ship.
+type ShipListItem struct {
+	widget.BaseWidget
+
+	icon  *widget.Icon
+	label *widget.Label
+}
+
+// NewShipListItem creates a new ship list item with placeholder values.
+func NewShipListItem() *ShipListItem {
+	icon := widget.NewIcon(theme.ErrorIcon())
+	label := widget.NewLabel("n/a")
+
+	li := &ShipListItem{
+		icon:  icon,
+		label: label,
+	}
+	li.ExtendBaseWidget(li)
+	return li
+}
+
+// CreateRenderer creates a new renderer for li.
+func (li *ShipListItem) CreateRenderer() fyne.WidgetRenderer {
+	return widget.NewSimpleRenderer(container.NewHBox(
+		li.icon,
+		li.label,
+	))
+}
+
+// SetShipName sets the displayed name of the ship.
+func (li *ShipListItem) SetShipName(s string) {
+	li.label.SetText(s)
 }
