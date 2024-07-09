@@ -7,6 +7,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/widget"
 	"github.com/stnokott/spacetrader/cmd/client/theme"
 	"github.com/stnokott/spacetrader/cmd/client/widgets"
 	pb "github.com/stnokott/spacetrader/internal/proto"
@@ -36,9 +37,17 @@ func main() {
 	shipListBindings := widgets.ShipListBindings{
 		Fleet: fleetBinding,
 	}
-	shipList := widgets.NewShipList(shipListBindings)
+	left := widgets.NewShipList(shipListBindings)
 
-	mainLayout := container.NewBorder(header, footer, shipList, nil)
+	split1 := container.NewHSplit(
+		left, widget.NewLabel("Center"),
+	)
+	split1.SetOffset(0.3)
+	split2 := container.NewHSplit(
+		split1, widget.NewLabel("Right"),
+	)
+	split2.SetOffset(0.8)
+	mainLayout := container.NewBorder(header, footer, nil, nil, split2)
 
 	loadingOverlay := NewLoadingOverlay()
 	root := container.NewStack(
