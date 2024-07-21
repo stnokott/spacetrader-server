@@ -9,8 +9,8 @@
 			"type": "go",
 			"request": "launch",
 			"mode": "debug",
-			"program": "${workspaceFolder}/cmd/server",
-			"envFile": "${workspaceFolder}/cmd/server/.env"
+			"program": "${workspaceFolder}/cmd/",
+			"envFile": "${workspaceFolder}/cmd/.env"
 		},
 	]
 }
