@@ -1,5 +1,4 @@
-// Package db interacts with the SQLite DB for caching large datasets like Systems.
-package db
+package main
 
 import (
 	"context"
@@ -15,26 +14,16 @@ import (
 	pb "github.com/stnokott/spacetrader/internal/proto"
 )
 
-// Client wraps the SQLite database used for caching large datasets like Systems.
-type Client struct {
-	db *sql.DB
-}
-
-// Open opens a new connection to the SQLite database saved under file.
-// It returns a new wrapping client.
-func Open(ctx context.Context, file string) (*Client, error) {
+func newDB(ctx context.Context, file string) (*sql.DB, error) {
 	// TODO: migration
 	db, err := sql.Open("sqlite", file)
 	if err != nil {
 		return nil, fmt.Errorf("opening SQLite connection: %w", err)
 	}
-	c := &Client{db}
-	return c, c.initTables(ctx)
-}
-
-// Close attempts to terminate the connection to the DB gracefully.
-func (c *Client) Close() error {
-	return c.db.Close()
+	if err = initTables(ctx, db); err != nil {
+		return nil, err
+	}
+	return db, nil
 }
 
 const _sqlCreateSystemsTable = `
@@ -51,16 +40,16 @@ const _sqlCreateSystemsTable = `
 	CREATE INDEX IF NOT EXISTS system_type_index ON systems(type);
 `
 
-func (c *Client) initTables(ctx context.Context) error {
+func initTables(ctx context.Context, db *sql.DB) error {
 	log.Debug("creating SQLite tables")
-	_, err := c.db.ExecContext(ctx, _sqlCreateSystemsTable)
+	_, err := db.ExecContext(ctx, _sqlCreateSystemsTable)
 	return err
 }
 
-// HasSystems returns true if the systems table has at least one row, indicating
+// hasSystems returns true if the systems table has at least one row, indicating
 // an existing Systems index.
-func (c *Client) HasSystems(ctx context.Context) (bool, error) {
-	result, err := c.db.QueryContext(ctx, "SELECT 1 FROM systems LIMIT 1")
+func (s *Server) hasSystems(ctx context.Context) (bool, error) {
+	result, err := s.db.QueryContext(ctx, "SELECT 1 FROM systems LIMIT 1")
 	if err != nil {
 		return false, err
 	}
@@ -69,10 +58,10 @@ func (c *Client) HasSystems(ctx context.Context) (bool, error) {
 	return hasNext, nil
 }
 
-// ReplaceSystems replaces the contents of the `systems` table with results from systemChan.
+// replaceSystems replaces the contents of the `systems` table with results from systemChan.
 // It continues reading from systemChan until it is closed or ctx expires.
-func (c *Client) ReplaceSystems(ctx context.Context, systemChan <-chan *api.System) (err error) {
-	tx, err := c.db.BeginTx(ctx, nil)
+func (s *Server) replaceSystems(ctx context.Context, systemChan <-chan *api.System) (err error) {
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		err = fmt.Errorf("creating SQLite transaction: %w", err)
 		return
@@ -150,11 +139,11 @@ const _sqlGetSystemsInRect = `
 `
 
 // GetSystemsInRect streams all systems whose coordinates fall into rect.
-func (c *Client) GetSystemsInRect(rect *pb.Rect, stream pb.Spacetrader_GetSystemsInRectServer) error {
+func (s *Server) GetSystemsInRect(rect *pb.Rect, stream pb.Spacetrader_GetSystemsInRectServer) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	rows, err := c.db.QueryContext(
+	rows, err := s.db.QueryContext(
 		ctx,
 		_sqlGetSystemsInRect,
 		sql.Named("x_min", rect.Start.X),

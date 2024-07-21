@@ -24,7 +24,7 @@ func (s *Server) UpdateSystemIndex(force bool) error {
 	defer cancel()
 
 	if !force {
-		hasIndex, err := s.db.HasSystems(ctx)
+		hasIndex, err := s.hasSystems(ctx)
 		if err != nil {
 			return fmt.Errorf("checking for system index: %w", err)
 		}
@@ -42,7 +42,7 @@ func (s *Server) UpdateSystemIndex(force bool) error {
 	errChan := make(chan error, 1)
 
 	go s.getSystems(ctx, systemChan, errChan)
-	if err := s.db.ReplaceSystems(ctx, systemChan); err != nil {
+	if err := s.replaceSystems(ctx, systemChan); err != nil {
 		return err
 	}
 	if apiErr, ok := <-errChan; ok {

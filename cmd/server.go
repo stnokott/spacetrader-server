@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"net"
 	"time"
@@ -10,7 +11,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/stnokott/spacetrader/internal/api"
 	"github.com/stnokott/spacetrader/internal/convert"
-	"github.com/stnokott/spacetrader/internal/db"
 	"google.golang.org/grpc"
 
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -21,7 +21,7 @@ import (
 // Server performs requests to the SpaceTraders API and offers them via gRPC.
 type Server struct {
 	api *resty.Client
-	db  *db.Client
+	db  *sql.DB
 
 	pb.UnimplementedSpacetraderServer
 }
@@ -33,14 +33,14 @@ func New(baseURL string, token string, dbFile string) (*Server, error) {
 
 	ctxDB, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	dbClient, err := db.Open(ctxDB, dbFile)
+	db, err := newDB(ctxDB, dbFile)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Server{
 		api: r,
-		db:  dbClient,
+		db:  db,
 	}, nil
 }
 
@@ -138,11 +138,4 @@ func (s *Server) getFleetPaginated(ctx context.Context, page int, limit int) ([]
 		return nil, err
 	}
 	return result.Data, nil
-}
-
-// TODO: move all db logic to server package to avoid such calls
-
-// GetSystemsInRect streams all systems whose coordinates fall into rect.
-func (s *Server) GetSystemsInRect(rect *pb.Rect, stream pb.Spacetrader_GetSystemsInRectServer) error {
-	return s.db.GetSystemsInRect(rect, stream)
 }
