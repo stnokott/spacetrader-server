@@ -17,17 +17,22 @@ import (
 )
 
 const (
-	port = 55555
+	port = 44444
 )
 
+// MockServer returns mocked results for all gRPC services.
 type MockServer struct {
-	pb.UnimplementedSpaceTradersServiceServer
+	pb.UnimplementedSpacetraderServer
+
+	systems []*pb.System
 }
 
+// Ping is a mock.
 func (s *MockServer) Ping(_ context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
 	return &emptypb.Empty{}, nil
 }
 
+// GetServerStatus is a mock.
 func (s *MockServer) GetServerStatus(_ context.Context, _ *emptypb.Empty) (*pb.ServerStatus, error) {
 	return &pb.ServerStatus{
 		Version:   "v1.2.3",
@@ -52,6 +57,7 @@ func (s *MockServer) GetServerStatus(_ context.Context, _ *emptypb.Empty) (*pb.S
 	}, nil
 }
 
+// GetCurrentAgent is a mock.
 func (s *MockServer) GetCurrentAgent(_ context.Context, _ *emptypb.Empty) (*pb.Agent, error) {
 	return &pb.Agent{
 		Name:         "STNOKOTT",
@@ -61,6 +67,7 @@ func (s *MockServer) GetCurrentAgent(_ context.Context, _ *emptypb.Empty) (*pb.A
 	}, nil
 }
 
+// GetFleet is a mock.
 func (s *MockServer) GetFleet(_ context.Context, _ *emptypb.Empty) (*pb.Fleet, error) {
 	ship1 := mocks.NewDefaultShip()
 	ship1.Name = "Enterprise"
@@ -72,6 +79,21 @@ func (s *MockServer) GetFleet(_ context.Context, _ *emptypb.Empty) (*pb.Fleet, e
 	}}, nil
 }
 
+// GetSystemsInRect is a mock.
+func (s *MockServer) GetSystemsInRect(rect *pb.Rect, stream pb.Spacetrader_GetSystemsInRectServer) error {
+	for _, system := range s.systems {
+		if system.X >= rect.Start.X &&
+			system.X <= rect.End.X &&
+			system.Y >= rect.Start.Y &&
+			system.Y <= rect.End.Y {
+			if err := stream.Send(system); err != nil {
+				return fmt.Errorf("sending system: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
 func main() {
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
@@ -79,10 +101,12 @@ func main() {
 		return
 	}
 
-	s := &MockServer{}
+	s := &MockServer{
+		systems: mocks.GenerateSystems(500, -2000, 2000),
+	}
 
 	srv := grpc.NewServer()
-	pb.RegisterSpaceTradersServiceServer(srv, s)
+	pb.RegisterSpacetraderServer(srv, s)
 	log.Println("server running on port", port)
 	if err := srv.Serve(lis); err != nil {
 		log.Printf("TCP serve: %v", err)

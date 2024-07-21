@@ -10,6 +10,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/stnokott/spacetrader/internal/api"
 	"github.com/stnokott/spacetrader/internal/convert"
+	"github.com/stnokott/spacetrader/internal/db"
 	"google.golang.org/grpc"
 
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -20,31 +21,32 @@ import (
 // Server performs requests to the SpaceTraders API and offers them via gRPC.
 type Server struct {
 	api *resty.Client
+	db  *db.Client
 
-	pb.UnimplementedSpaceTradersServiceServer
+	pb.UnimplementedSpacetraderServer
 }
 
 // New creates and returns a new Client instance.
-func New(baseURL string, token string) *Server {
+func New(baseURL string, token string, dbFile string) (*Server, error) {
 	r := resty.New()
 	configureRestyClient(r, baseURL, token)
 
+	ctxDB, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	dbClient, err := db.Open(ctxDB, dbFile)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Server{
 		api: r,
-	}
+		db:  dbClient,
+	}, nil
 }
 
-func configureRestyClient(r *resty.Client, baseURL string, token string) {
-	r.SetBaseURL(baseURL)
-	r.SetAuthToken(token)
-	r.SetHeaders(map[string]string{
-		"Accept":     "application/json",
-		"User-Agent": "github.com/stnokott/spacetraders",
-	})
-	r.SetTimeout(5 * time.Second) // TODO: allow configuring from env
-	r.SetLogger(log.StandardLogger())
-
-	r.OnBeforeRequest(beforeRequest)
+// Close terminates all underlying connections.
+func (s *Server) Close() error {
+	return s.db.Close()
 }
 
 // Listen starts the gRPC server on the specified port.
@@ -56,7 +58,7 @@ func (s *Server) Listen(port int) error {
 		return fmt.Errorf("TCP listen: %w", err)
 	}
 	srv := grpc.NewServer()
-	pb.RegisterSpaceTradersServiceServer(srv, s)
+	pb.RegisterSpacetraderServer(srv, s)
 	log.WithField("port", port).Infof("gRPC server listening")
 	if err := srv.Serve(lis); err != nil {
 		return fmt.Errorf("TCP serve: %w", err)
@@ -102,6 +104,8 @@ func (s *Server) GetFleet(ctx context.Context, _ *emptypb.Empty) (*pb.Fleet, err
 	}
 	out := make([]*pb.Ship, agent.ShipCount)
 
+	// TODO: refactor to use pagination wrapper for all paginated endpoints
+
 	n := 0
 	page := 1
 	perPage := 10
@@ -134,4 +138,11 @@ func (s *Server) getFleetPaginated(ctx context.Context, page int, limit int) ([]
 		return nil, err
 	}
 	return result.Data, nil
+}
+
+// TODO: move all db logic to server package to avoid such calls
+
+// GetSystemsInRect streams all systems whose coordinates fall into rect.
+func (s *Server) GetSystemsInRect(rect *pb.Rect, stream pb.Spacetrader_GetSystemsInRectServer) error {
+	return s.db.GetSystemsInRect(rect, stream)
 }

@@ -20,206 +20,272 @@ import (
 const _ = grpc.SupportPackageIsVersion8
 
 const (
-	SpaceTradersService_Ping_FullMethodName            = "/proto.SpaceTradersService/Ping"
-	SpaceTradersService_GetServerStatus_FullMethodName = "/proto.SpaceTradersService/GetServerStatus"
-	SpaceTradersService_GetCurrentAgent_FullMethodName = "/proto.SpaceTradersService/GetCurrentAgent"
-	SpaceTradersService_GetFleet_FullMethodName        = "/proto.SpaceTradersService/GetFleet"
+	Spacetrader_Ping_FullMethodName             = "/proto.Spacetrader/Ping"
+	Spacetrader_GetServerStatus_FullMethodName  = "/proto.Spacetrader/GetServerStatus"
+	Spacetrader_GetCurrentAgent_FullMethodName  = "/proto.Spacetrader/GetCurrentAgent"
+	Spacetrader_GetFleet_FullMethodName         = "/proto.Spacetrader/GetFleet"
+	Spacetrader_GetSystemsInRect_FullMethodName = "/proto.Spacetrader/GetSystemsInRect"
 )
 
-// SpaceTradersServiceClient is the client API for SpaceTradersService service.
+// SpacetraderClient is the client API for Spacetrader service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type SpaceTradersServiceClient interface {
+type SpacetraderClient interface {
 	Ping(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	GetServerStatus(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ServerStatus, error)
 	GetCurrentAgent(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Agent, error)
 	GetFleet(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Fleet, error)
+	GetSystemsInRect(ctx context.Context, in *Rect, opts ...grpc.CallOption) (Spacetrader_GetSystemsInRectClient, error)
 }
 
-type spaceTradersServiceClient struct {
+type spacetraderClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewSpaceTradersServiceClient(cc grpc.ClientConnInterface) SpaceTradersServiceClient {
-	return &spaceTradersServiceClient{cc}
+func NewSpacetraderClient(cc grpc.ClientConnInterface) SpacetraderClient {
+	return &spacetraderClient{cc}
 }
 
-func (c *spaceTradersServiceClient) Ping(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *spacetraderClient) Ping(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, SpaceTradersService_Ping_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, Spacetrader_Ping_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *spaceTradersServiceClient) GetServerStatus(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ServerStatus, error) {
+func (c *spacetraderClient) GetServerStatus(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ServerStatus, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ServerStatus)
-	err := c.cc.Invoke(ctx, SpaceTradersService_GetServerStatus_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, Spacetrader_GetServerStatus_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *spaceTradersServiceClient) GetCurrentAgent(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Agent, error) {
+func (c *spacetraderClient) GetCurrentAgent(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Agent, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(Agent)
-	err := c.cc.Invoke(ctx, SpaceTradersService_GetCurrentAgent_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, Spacetrader_GetCurrentAgent_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *spaceTradersServiceClient) GetFleet(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Fleet, error) {
+func (c *spacetraderClient) GetFleet(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Fleet, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(Fleet)
-	err := c.cc.Invoke(ctx, SpaceTradersService_GetFleet_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, Spacetrader_GetFleet_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// SpaceTradersServiceServer is the server API for SpaceTradersService service.
-// All implementations must embed UnimplementedSpaceTradersServiceServer
+func (c *spacetraderClient) GetSystemsInRect(ctx context.Context, in *Rect, opts ...grpc.CallOption) (Spacetrader_GetSystemsInRectClient, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &Spacetrader_ServiceDesc.Streams[0], Spacetrader_GetSystemsInRect_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &spacetraderGetSystemsInRectClient{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type Spacetrader_GetSystemsInRectClient interface {
+	Recv() (*System, error)
+	grpc.ClientStream
+}
+
+type spacetraderGetSystemsInRectClient struct {
+	grpc.ClientStream
+}
+
+func (x *spacetraderGetSystemsInRectClient) Recv() (*System, error) {
+	m := new(System)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+// SpacetraderServer is the server API for Spacetrader service.
+// All implementations must embed UnimplementedSpacetraderServer
 // for forward compatibility
-type SpaceTradersServiceServer interface {
+type SpacetraderServer interface {
 	Ping(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
 	GetServerStatus(context.Context, *emptypb.Empty) (*ServerStatus, error)
 	GetCurrentAgent(context.Context, *emptypb.Empty) (*Agent, error)
 	GetFleet(context.Context, *emptypb.Empty) (*Fleet, error)
-	mustEmbedUnimplementedSpaceTradersServiceServer()
+	GetSystemsInRect(*Rect, Spacetrader_GetSystemsInRectServer) error
+	mustEmbedUnimplementedSpacetraderServer()
 }
 
-// UnimplementedSpaceTradersServiceServer must be embedded to have forward compatible implementations.
-type UnimplementedSpaceTradersServiceServer struct {
+// UnimplementedSpacetraderServer must be embedded to have forward compatible implementations.
+type UnimplementedSpacetraderServer struct {
 }
 
-func (UnimplementedSpaceTradersServiceServer) Ping(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
+func (UnimplementedSpacetraderServer) Ping(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
 }
-func (UnimplementedSpaceTradersServiceServer) GetServerStatus(context.Context, *emptypb.Empty) (*ServerStatus, error) {
+func (UnimplementedSpacetraderServer) GetServerStatus(context.Context, *emptypb.Empty) (*ServerStatus, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetServerStatus not implemented")
 }
-func (UnimplementedSpaceTradersServiceServer) GetCurrentAgent(context.Context, *emptypb.Empty) (*Agent, error) {
+func (UnimplementedSpacetraderServer) GetCurrentAgent(context.Context, *emptypb.Empty) (*Agent, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetCurrentAgent not implemented")
 }
-func (UnimplementedSpaceTradersServiceServer) GetFleet(context.Context, *emptypb.Empty) (*Fleet, error) {
+func (UnimplementedSpacetraderServer) GetFleet(context.Context, *emptypb.Empty) (*Fleet, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetFleet not implemented")
 }
-func (UnimplementedSpaceTradersServiceServer) mustEmbedUnimplementedSpaceTradersServiceServer() {}
+func (UnimplementedSpacetraderServer) GetSystemsInRect(*Rect, Spacetrader_GetSystemsInRectServer) error {
+	return status.Errorf(codes.Unimplemented, "method GetSystemsInRect not implemented")
+}
+func (UnimplementedSpacetraderServer) mustEmbedUnimplementedSpacetraderServer() {}
 
-// UnsafeSpaceTradersServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to SpaceTradersServiceServer will
+// UnsafeSpacetraderServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to SpacetraderServer will
 // result in compilation errors.
-type UnsafeSpaceTradersServiceServer interface {
-	mustEmbedUnimplementedSpaceTradersServiceServer()
+type UnsafeSpacetraderServer interface {
+	mustEmbedUnimplementedSpacetraderServer()
 }
 
-func RegisterSpaceTradersServiceServer(s grpc.ServiceRegistrar, srv SpaceTradersServiceServer) {
-	s.RegisterService(&SpaceTradersService_ServiceDesc, srv)
+func RegisterSpacetraderServer(s grpc.ServiceRegistrar, srv SpacetraderServer) {
+	s.RegisterService(&Spacetrader_ServiceDesc, srv)
 }
 
-func _SpaceTradersService_Ping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Spacetrader_Ping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(SpaceTradersServiceServer).Ping(ctx, in)
+		return srv.(SpacetraderServer).Ping(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: SpaceTradersService_Ping_FullMethodName,
+		FullMethod: Spacetrader_Ping_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SpaceTradersServiceServer).Ping(ctx, req.(*emptypb.Empty))
+		return srv.(SpacetraderServer).Ping(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _SpaceTradersService_GetServerStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Spacetrader_GetServerStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(SpaceTradersServiceServer).GetServerStatus(ctx, in)
+		return srv.(SpacetraderServer).GetServerStatus(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: SpaceTradersService_GetServerStatus_FullMethodName,
+		FullMethod: Spacetrader_GetServerStatus_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SpaceTradersServiceServer).GetServerStatus(ctx, req.(*emptypb.Empty))
+		return srv.(SpacetraderServer).GetServerStatus(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _SpaceTradersService_GetCurrentAgent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Spacetrader_GetCurrentAgent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(SpaceTradersServiceServer).GetCurrentAgent(ctx, in)
+		return srv.(SpacetraderServer).GetCurrentAgent(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: SpaceTradersService_GetCurrentAgent_FullMethodName,
+		FullMethod: Spacetrader_GetCurrentAgent_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SpaceTradersServiceServer).GetCurrentAgent(ctx, req.(*emptypb.Empty))
+		return srv.(SpacetraderServer).GetCurrentAgent(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _SpaceTradersService_GetFleet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Spacetrader_GetFleet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(SpaceTradersServiceServer).GetFleet(ctx, in)
+		return srv.(SpacetraderServer).GetFleet(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: SpaceTradersService_GetFleet_FullMethodName,
+		FullMethod: Spacetrader_GetFleet_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SpaceTradersServiceServer).GetFleet(ctx, req.(*emptypb.Empty))
+		return srv.(SpacetraderServer).GetFleet(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// SpaceTradersService_ServiceDesc is the grpc.ServiceDesc for SpaceTradersService service.
+func _Spacetrader_GetSystemsInRect_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(Rect)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(SpacetraderServer).GetSystemsInRect(m, &spacetraderGetSystemsInRectServer{ServerStream: stream})
+}
+
+type Spacetrader_GetSystemsInRectServer interface {
+	Send(*System) error
+	grpc.ServerStream
+}
+
+type spacetraderGetSystemsInRectServer struct {
+	grpc.ServerStream
+}
+
+func (x *spacetraderGetSystemsInRectServer) Send(m *System) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+// Spacetrader_ServiceDesc is the grpc.ServiceDesc for Spacetrader service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var SpaceTradersService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "proto.SpaceTradersService",
-	HandlerType: (*SpaceTradersServiceServer)(nil),
+var Spacetrader_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "proto.Spacetrader",
+	HandlerType: (*SpacetraderServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "Ping",
-			Handler:    _SpaceTradersService_Ping_Handler,
+			Handler:    _Spacetrader_Ping_Handler,
 		},
 		{
 			MethodName: "GetServerStatus",
-			Handler:    _SpaceTradersService_GetServerStatus_Handler,
+			Handler:    _Spacetrader_GetServerStatus_Handler,
 		},
 		{
 			MethodName: "GetCurrentAgent",
-			Handler:    _SpaceTradersService_GetCurrentAgent_Handler,
+			Handler:    _Spacetrader_GetCurrentAgent_Handler,
 		},
 		{
 			MethodName: "GetFleet",
-			Handler:    _SpaceTradersService_GetFleet_Handler,
+			Handler:    _Spacetrader_GetFleet_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "GetSystemsInRect",
+			Handler:       _Spacetrader_GetSystemsInRect_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "server.proto",
 }

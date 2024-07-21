@@ -52,8 +52,8 @@ func ConvertNavWaypoint(source api.ShipNavRouteWaypoint) (*proto.WaypointBase, e
 		return nil, err
 	}
 	protoWaypointBase.Type = protoWaypointBase_Type
-	protoWaypointBase.X = IntToInt64(source.X)
-	protoWaypointBase.Y = IntToInt64(source.Y)
+	protoWaypointBase.X = IntToInt32(source.X)
+	protoWaypointBase.Y = IntToInt32(source.Y)
 	return &protoWaypointBase, nil
 }
 func ConvertShip(source *api.Ship) (*proto.Ship, error) {

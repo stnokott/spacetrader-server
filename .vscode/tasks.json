@@ -14,7 +14,7 @@
 			}
 		},
 		{
-			"label": "Launch gRPC UI",
+			"label": "Run gRPC UI",
 			"type": "shell",
 			"command": "go",
 			"args": [
@@ -41,7 +41,7 @@
 			}
 		},
 		{
-			"label": "Start Mock Server",
+			"label": "Run Mock Server",
 			"type": "process",
 			"command": "go",
 			"args": [

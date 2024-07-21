@@ -39,6 +39,18 @@ func main() {
 	}
 
 	// create server
-	s := New(baseURL, cfg.AgentToken)
+	s, err := New(baseURL, cfg.AgentToken, "./systems.db")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		_ = s.Close()
+	}()
+	if err := s.UpdateSystemIndex(false); err != nil {
+		log.Println(err)
+		return
+	}
+
 	log.Fatal(s.Listen(55555)) // TODO: configure port from env
+	// TODO: graceful shutdown
 }

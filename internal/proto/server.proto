@@ -4,16 +4,19 @@ import "google/protobuf/timestamp.proto";
 import "google/protobuf/empty.proto";
 
 option go_package = "github.com/stnokott/spacetrader/internal/proto";
+option csharp_namespace = "GrpcSpacetrader";
 
 package proto;
 
 // TODO: split up
+// TODO: healthchecks https://grpc.io/docs/guides/health-checking/
 
-service SpaceTradersService {
+service Spacetrader {
 	rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty);
 	rpc GetServerStatus(google.protobuf.Empty) returns (ServerStatus);
 	rpc GetCurrentAgent(google.protobuf.Empty) returns (Agent);
 	rpc GetFleet(google.protobuf.Empty) returns (Fleet);
+	rpc GetSystemsInRect(Rect) returns (stream System);
 }
 
 message ServerStatus {
@@ -566,8 +569,8 @@ message System {
 	}
 	Type type = 3;
 
-	int64 x = 4;
-	int64 y = 5;
+	int32 x = 4;
+	int32 y = 5;
 	repeated WaypointBase waypoints = 6;
 
 	// Factions that control this system.
@@ -597,6 +600,16 @@ message WaypointBase {
 	}
 	Type type = 3;
 
-	int64 x = 4;
-	int64 y = 5;
+	int32 x = 4;
+	int32 y = 5;
+}
+
+message Vector {
+	int32 x = 1;
+	int32 y = 2;
+}
+
+message Rect {
+	Vector start = 1;
+	Vector end = 2;
 }

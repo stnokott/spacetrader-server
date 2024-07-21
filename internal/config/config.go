@@ -16,7 +16,7 @@ func Load() (*Config, error) {
 	cfg := new(Config)
 	if err := env.Load(cfg, nil); err != nil {
 		log.Error(err)
-		log.Error("Usage:")
+		log.Error("Possible environment variables:")
 		env.Usage(cfg, log.StandardLogger().WriterLevel(log.ErrorLevel), nil)
 		return nil, err
 	}
