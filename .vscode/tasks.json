@@ -4,11 +4,62 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
-			"label": "build snapshot",
+			"label": "Build snapshot",
 			"type": "shell",
 			"command": "goreleaser release --skip=publish --clean --snapshot --config=build/.goreleaser.yaml",
 			"problemMatcher": "$go",
-			"group": "build"
+			"group": "build",
+			"icon": {
+				"id": "coffee"
+			}
+		},
+		{
+			"label": "Run gRPC UI",
+			"type": "shell",
+			"command": "go",
+			"args": [
+				"run",
+				"github.com/fullstorydev/grpcui/cmd/grpcui@latest",
+				"--plaintext",
+				"--import-path=internal/proto/",
+				"--proto=server.proto",
+				"localhost:55555"
+			],
+			"group": "none",
+			"isBackground": true,
+			"presentation": {
+				"echo": true,
+				"reveal": "silent",
+				"focus": false,
+				"panel": "shared",
+				"showReuseMessage": true,
+				"clear": false
+			},
+			"problemMatcher": [],
+			"icon": {
+				"id": "debug-alt"
+			}
+		},
+		{
+			"label": "Run Mock Server",
+			"type": "process",
+			"command": "go",
+			"args": [
+				"run",
+				"./cmd/server/mock"
+			],
+			"isBackground": true,
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": "$go",
+			"group": {
+				"kind": "test",
+				"isDefault": false
+			},
+			"icon": {
+				"id": "server"
+			}
 		}
 	]
 }
