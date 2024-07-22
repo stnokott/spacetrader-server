@@ -3,10 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/go-resty/resty/v2"
 	log "github.com/sirupsen/logrus"
+	"github.com/stnokott/spacetrader/internal/api"
 	"go.uber.org/ratelimit"
 )
 
@@ -83,4 +85,51 @@ func expectStatus(resp *resty.Response, expectedStatus int) error {
 		}
 	}
 	return nil
+}
+
+type pageFunc func(page int) (urlPath string)
+
+// getPaginated traverses all pages of a paginated endpoint and returns the
+// resulting items as a slice.
+//
+// Pass a function pageFn which assembles the URL path (without the base URL) depending on
+// the current page.
+func getPaginated[T any](
+	ctx context.Context,
+	s *Server,
+	pageFn pageFunc,
+) ([]T, error) {
+	var items []T
+
+	// total expected number of items
+	total := 1 // start with total > 0 to enter the first loop iteration
+	// total number of items received
+	n := 0
+	for page := 1; n < total; page++ {
+		urlPath := pageFn(page)
+
+		result := new(struct {
+			Data []T       `json:"data"`
+			Meta *api.Meta `json:"meta"`
+		})
+		if err := s.get(ctx, result, urlPath, 200); err != nil {
+			return nil, err
+		}
+
+		// update the expected total item number
+		total = result.Meta.Total
+		// pre-allocate once we know the total size (i.e. after querying page 1)
+		if items == nil {
+			items = make([]T, total)
+		}
+
+		for _, item := range result.Data {
+			items[n] = item
+			// update the actual received item count so far
+			n++
+		}
+		log.Infof("queried %d/%d of type %s", n, total, reflect.TypeOf(*new(T)).Name())
+	}
+
+	return items, nil
 }

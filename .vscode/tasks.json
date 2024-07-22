@@ -46,7 +46,7 @@
 			"command": "go",
 			"args": [
 				"run",
-				"./cmd/server/mock"
+				"./cmd/mock"
 			],
 			"isBackground": true,
 			"options": {

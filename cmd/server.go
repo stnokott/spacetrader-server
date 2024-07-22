@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"net"
 	"time"
@@ -10,7 +11,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/stnokott/spacetrader/internal/api"
 	"github.com/stnokott/spacetrader/internal/convert"
-	"github.com/stnokott/spacetrader/internal/db"
 	"google.golang.org/grpc"
 
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -21,7 +21,7 @@ import (
 // Server performs requests to the SpaceTraders API and offers them via gRPC.
 type Server struct {
 	api *resty.Client
-	db  *db.Client
+	db  *sql.DB
 
 	pb.UnimplementedSpacetraderServer
 }
@@ -33,14 +33,14 @@ func New(baseURL string, token string, dbFile string) (*Server, error) {
 
 	ctxDB, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	dbClient, err := db.Open(ctxDB, dbFile)
+	db, err := newDB(ctxDB, dbFile)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Server{
 		api: r,
-		db:  dbClient,
+		db:  db,
 	}, nil
 }
 
@@ -97,52 +97,23 @@ func (s *Server) GetCurrentAgent(ctx context.Context, _ *emptypb.Empty) (*pb.Age
 
 // GetFleet returns the complete list of ships in the agent's posession.
 func (s *Server) GetFleet(ctx context.Context, _ *emptypb.Empty) (*pb.Fleet, error) {
-	// we need the total ship count to enable allocation of the correct slice size
-	agent, err := s.GetCurrentAgent(ctx, nil)
+	ships, err := getPaginated[*api.Ship](
+		ctx,
+		s,
+		func(page int) (urlPath string) {
+			return fmt.Sprintf("/my/ships?page=%d&limit=20", page)
+		},
+	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("querying ships: %w", err)
 	}
-	out := make([]*pb.Ship, agent.ShipCount)
 
-	// TODO: refactor to use pagination wrapper for all paginated endpoints
+	converted := make([]*pb.Ship, len(ships))
 
-	n := 0
-	page := 1
-	perPage := 10
-	for n < len(out) {
-		ships, err := s.getFleetPaginated(ctx, page, perPage)
-		if err != nil {
-			return nil, err
+	for i, ship := range ships {
+		if converted[i], err = convert.ConvertShip(ship); err != nil {
+			return nil, fmt.Errorf("converting ship: %w", err)
 		}
-
-		for _, ship := range ships {
-			shipConverted, err := convert.ConvertShip(ship)
-			if err != nil {
-				return nil, err
-			}
-			out[n] = shipConverted
-			n++
-		}
-		page++
 	}
-	return &pb.Fleet{Ships: out}, nil
-}
-
-func (s *Server) getFleetPaginated(ctx context.Context, page int, limit int) ([]*api.Ship, error) {
-	url := fmt.Sprintf("/my/ships?page=%d&limit=%d", page, limit)
-
-	result := new(struct {
-		Data []*api.Ship `json:"data"`
-	})
-	if err := s.get(ctx, result, url, 200); err != nil {
-		return nil, err
-	}
-	return result.Data, nil
-}
-
-// TODO: move all db logic to server package to avoid such calls
-
-// GetSystemsInRect streams all systems whose coordinates fall into rect.
-func (s *Server) GetSystemsInRect(rect *pb.Rect, stream pb.Spacetrader_GetSystemsInRectServer) error {
-	return s.db.GetSystemsInRect(rect, stream)
+	return &pb.Fleet{Ships: converted}, nil
 }
