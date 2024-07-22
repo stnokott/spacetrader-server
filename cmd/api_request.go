@@ -89,99 +89,47 @@ func expectStatus(resp *resty.Response, expectedStatus int) error {
 
 type pageFunc func(page int) (urlPath string)
 
-type paginatedResult[T any] struct {
-	Data T
-	Err  error
-}
-
-// getPaginatedAsync asynchronously queries a paginated endpoint, traversing
-// its pages.
-// We use a goroutine for endpoints which return huge amounts of data across many pages
-// like the "/systems" endpoint. Storing all the responses in one singular slice would
-// consume a lot of memory at once.
-// Sending this data via channels is the preferred method.
-//
-// API responses of type T are sent to the returned data channel.
-//
-// The internal goroutine can be stopped via the stop channel.
-// This should only be done when an external error occurs, e.g. during
-// consumption of the data channel.
-// When an error occurs from within getPaginatedAsync, i.e. (<-data).Err != nil, the goroutine will stop automatically,
-// there is no need to send a stop signal in that case.
+// getPaginated traverses all pages of a paginated endpoint and returns the
+// resulting items as a slice.
 //
 // Pass a function pageFn which assembles the URL path (without the base URL) depending on
 // the current page.
-func getPaginatedAsync[T any](
+func getPaginated[T any](
 	ctx context.Context,
 	s *Server,
 	pageFn pageFunc,
-) (data <-chan paginatedResult[T], stop chan<- struct{}) {
-	dataChan := make(chan paginatedResult[T]) // unbuffered since the API is expected to be slower than the consumer
-	stopChan := make(chan struct{}, 1)        // buffered so the caller doesn't block when sending
-	data, stop = dataChan, stopChan
+) ([]T, error) {
+	var items []T
 
-	go func() {
-		defer close(stopChan)
-		defer close(dataChan)
+	// total expected number of items
+	total := 1 // start with total > 0 to enter the first loop iteration
+	// total number of items received
+	n := 0
+	for page := 1; n < total; page++ {
+		urlPath := pageFn(page)
 
-		// total expected number of items
-		total := 1 // start with total > 0 to enter the first loop iteration
-		// total number of items received
-		n := 0
-		for page := 1; n < total; page++ {
-			urlPath := pageFn(page)
-
-			result := new(struct {
-				Data []T       `json:"data"`
-				Meta *api.Meta `json:"meta"`
-			})
-			if err := s.get(ctx, result, urlPath, 200); err != nil {
-				dataChan <- paginatedResult[T]{
-					Err: err,
-				}
-				return
-			}
-			for _, item := range result.Data {
-				dataChan <- paginatedResult[T]{
-					Data: item,
-				}
-			}
-			// update the expected total item number
-			total = result.Meta.Total
-			// update the actual received item count so far
-			n += len(result.Data)
-			log.Infof("queried %d/%d of type %s", n, total, reflect.TypeOf(*new(T)).Name())
-
-			// check cancel conditions (stop channel and context)
-			select {
-			case <-stopChan:
-				return
-			case <-ctx.Done():
-				return
-			default:
-				continue
-			}
+		result := new(struct {
+			Data []T       `json:"data"`
+			Meta *api.Meta `json:"meta"`
+		})
+		if err := s.get(ctx, result, urlPath, 200); err != nil {
+			return nil, err
 		}
-	}()
 
-	return
-}
+		// update the expected total item number
+		total = result.Meta.Total
+		// pre-allocate once we know the total size (i.e. after querying page 1)
+		if items == nil {
+			items = make([]T, total)
+		}
 
-// getPaginatedTotal returns the total number of items for the endpoint (provided by
-// pageFn) if all pages are traversed by traversing just one page.
-//
-// Knowing the expected number of items can be useful for pre-allocating the
-// size of an array holding the paginated items, saving memory.
-func (s *Server) getPaginatedTotal(ctx context.Context, pageFn pageFunc) (int, error) {
-	result := new(struct {
-		Meta *api.Meta
-	})
-
-	path := pageFn(1) // get path for first page
-	log.Debugf("getting total for %s", path)
-
-	if err := s.get(ctx, result, path, 200); err != nil {
-		return -1, fmt.Errorf("getting total for %s: %w", path, err)
+		for _, item := range result.Data {
+			items[n] = item
+			// update the actual received item count so far
+			n++
+		}
+		log.Infof("queried %d/%d of type %s", n, total, reflect.TypeOf(*new(T)).Name())
 	}
-	return result.Meta.Total, nil
+
+	return items, nil
 }

@@ -44,19 +44,18 @@ func (s *Server) UpdateSystemIndex(force bool) error {
 // replaceSystems replaces the contents of the `systems` table with results from systemChan.
 // It continues reading from systemChan until it is closed or ctx expires.
 func (s *Server) replaceSystems(ctx context.Context) (err error) {
-	dataChan, stopChan := getPaginatedAsync[*api.System](
+	var systems []*api.System
+	systems, err = getPaginated[*api.System](
 		ctx,
 		s,
 		func(page int) (urlPath string) {
 			return fmt.Sprintf("/systems?page=%d&limit=20", page)
 		},
 	)
-	defer func() {
-		// stop querying when error is encountered
-		if err != nil {
-			stopChan <- struct{}{}
-		}
-	}()
+	if err != nil {
+		err = fmt.Errorf("querying systems: %w", err)
+		return
+	}
 
 	var tx *sql.Tx
 	tx, err = s.db.BeginTx(ctx, nil)
@@ -93,46 +92,34 @@ func (s *Server) replaceSystems(ctx context.Context) (err error) {
 		return
 	}
 
-	n := 0
 	defer func() {
 		if err == nil {
-			log.WithField("n", n).Info("system index replaced")
+			log.WithField("n", len(systems)).Info("system index replaced")
 		}
 	}()
 
-	for {
-		select {
-		case <-ctx.Done():
-			err = fmt.Errorf("context exceeded after %d systems processed", n)
+	for i, system := range systems {
+		if _, contextExceeded := <-ctx.Done(); contextExceeded {
+			err = fmt.Errorf("context exceeded after %d systems processed", i)
 			return
-		case rcv, ok := <-dataChan:
-			if !ok {
-				return
-			}
-			if rcv.Err != nil {
-				err = rcv.Err
-				return
-			}
-			system := rcv.Data
-
-			factions := make([]string, len(system.Factions))
-			for i, fac := range system.Factions {
-				factions[i] = string(fac.Symbol)
-			}
-			if _, err = insert.ExecContext(
-				ctx,
-				sql.Named("symbol", system.Symbol),
-				sql.Named("x", system.X),
-				sql.Named("y", system.Y),
-				sql.Named("type", string(system.Type)),
-				sql.Named("factions", strings.Join(factions, ",")),
-			); err != nil {
-				err = fmt.Errorf("inserting system '%s': %v", system.Symbol, err)
-				return
-			}
-			n++
+		}
+		factions := make([]string, len(system.Factions))
+		for j, fac := range system.Factions {
+			factions[j] = string(fac.Symbol)
+		}
+		if _, err = insert.ExecContext(
+			ctx,
+			sql.Named("symbol", system.Symbol),
+			sql.Named("x", system.X),
+			sql.Named("y", system.Y),
+			sql.Named("type", string(system.Type)),
+			sql.Named("factions", strings.Join(factions, ",")),
+		); err != nil {
+			err = fmt.Errorf("inserting system '%s': %v", system.Symbol, err)
+			return
 		}
 	}
+	return
 }
 
 // hasSystems returns true if the systems table has at least one row, indicating

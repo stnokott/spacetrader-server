@@ -97,29 +97,23 @@ func (s *Server) GetCurrentAgent(ctx context.Context, _ *emptypb.Empty) (*pb.Age
 
 // GetFleet returns the complete list of ships in the agent's posession.
 func (s *Server) GetFleet(ctx context.Context, _ *emptypb.Empty) (*pb.Fleet, error) {
-	pageFn := func(page int) (urlPath string) {
-		return fmt.Sprintf("/my/ships?page=%d&limit=20", page)
-	}
-
-	// we need the total ship count to enable allocation of the correct slice size
-	total, err := s.getPaginatedTotal(ctx, pageFn)
+	ships, err := getPaginated[*api.Ship](
+		ctx,
+		s,
+		func(page int) (urlPath string) {
+			return fmt.Sprintf("/my/ships?page=%d&limit=20", page)
+		},
+	)
 	if err != nil {
-		return nil, fmt.Errorf("could not get agent ship count: %w", err)
+		return nil, fmt.Errorf("querying ships: %w", err)
 	}
-	out := make([]*pb.Ship, total)
 
-	dataChan, stopChan := getPaginatedAsync[*api.Ship](ctx, s, pageFn)
+	converted := make([]*pb.Ship, len(ships))
 
-	i := 0
-	for rcv := range dataChan {
-		if rcv.Err != nil {
-			return nil, rcv.Err
-		}
-		if out[i], err = convert.ConvertShip(rcv.Data); err != nil {
-			stopChan <- struct{}{}
+	for i, ship := range ships {
+		if converted[i], err = convert.ConvertShip(ship); err != nil {
 			return nil, fmt.Errorf("converting ship: %w", err)
 		}
-		i++
 	}
-	return &pb.Fleet{Ships: out}, nil
+	return &pb.Fleet{Ships: converted}, nil
 }
