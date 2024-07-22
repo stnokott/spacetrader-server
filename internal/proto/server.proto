@@ -11,8 +11,6 @@ option csharp_namespace = "GrpcSpacetrader";
 
 package proto;
 
-// TODO: healthchecks https://grpc.io/docs/guides/health-checking/
-
 service Spacetrader {
 	rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty);
 	rpc GetServerStatus(google.protobuf.Empty) returns (ServerStatus);
