@@ -52,7 +52,7 @@ func (s *Server) replaceSystems(ctx context.Context) (err error) {
 		},
 	)
 	defer func() {
-		// stop querying when er encounter an error
+		// stop querying when error is encountered
 		if err != nil {
 			stopChan <- struct{}{}
 		}
