@@ -102,40 +102,27 @@ func (s *Server) GetFleet(ctx context.Context, _ *emptypb.Empty) (*pb.Fleet, err
 	if err != nil {
 		return nil, err
 	}
+	// TODO: generic function to get total count from pagination Meta beforehand
 	out := make([]*pb.Ship, agent.ShipCount)
 
-	// TODO: refactor to use pagination wrapper for all paginated endpoints
+	dataChan, stopChan := getPaginatedAsync[*api.Ship](
+		ctx,
+		s,
+		func(page int) (urlPath string) {
+			return fmt.Sprintf("/my/ships?page=%d&limit=20", page)
+		},
+	)
 
-	n := 0
-	page := 1
-	perPage := 10
-	for n < len(out) {
-		ships, err := s.getFleetPaginated(ctx, page, perPage)
-		if err != nil {
-			return nil, err
+	i := 0
+	for rcv := range dataChan {
+		if rcv.Err != nil {
+			return nil, rcv.Err
 		}
-
-		for _, ship := range ships {
-			shipConverted, err := convert.ConvertShip(ship)
-			if err != nil {
-				return nil, err
-			}
-			out[n] = shipConverted
-			n++
+		if out[i], err = convert.ConvertShip(rcv.Data); err != nil {
+			stopChan <- struct{}{}
+			return nil, fmt.Errorf("converting ship: %w", err)
 		}
-		page++
+		i++
 	}
 	return &pb.Fleet{Ships: out}, nil
-}
-
-func (s *Server) getFleetPaginated(ctx context.Context, page int, limit int) ([]*api.Ship, error) {
-	url := fmt.Sprintf("/my/ships?page=%d&limit=%d", page, limit)
-
-	result := new(struct {
-		Data []*api.Ship `json:"data"`
-	})
-	if err := s.get(ctx, result, url, 200); err != nil {
-		return nil, err
-	}
-	return result.Data, nil
 }

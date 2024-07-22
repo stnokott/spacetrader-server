@@ -3,10 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/go-resty/resty/v2"
 	log "github.com/sirupsen/logrus"
+	"github.com/stnokott/spacetrader/internal/api"
 	"go.uber.org/ratelimit"
 )
 
@@ -83,4 +85,84 @@ func expectStatus(resp *resty.Response, expectedStatus int) error {
 		}
 	}
 	return nil
+}
+
+type pageFunc func(page int) (urlPath string)
+
+type paginatedResult[T any] struct {
+	Data T
+	Err  error
+}
+
+// getPaginatedAsync asynchronously queries a paginated endpoint, traversing
+// its pages.
+// We use a goroutine for endpoints which return huge amounts of data across many pages
+// like the "/systems" endpoint. Storing all the responses in one singular slice would
+// consume a lot of memory at once.
+// Sending this data via channels is the preferred method.
+//
+// API responses of type T are sent to the returned data channel.
+//
+// The internal goroutine can be stopped via the stop channel.
+// This should only be done when an external error occurs, e.g. during
+// consumption of the data channel.
+// When an error occurs from within getPaginatedAsync, i.e. (<-data).Err != nil, the goroutine will stop automatically,
+// there is no need to send a stop signal in that case.
+//
+// Pass a function pageFn which assembles the URL path (without the base URL) depending on
+// the current page.
+func getPaginatedAsync[T any](
+	ctx context.Context,
+	s *Server,
+	pageFn pageFunc,
+) (data <-chan paginatedResult[T], stop chan<- struct{}) {
+	dataChan := make(chan paginatedResult[T]) // unbuffered since the API is expected to be slower than the consumer
+	stopChan := make(chan struct{}, 1)        // buffered so the caller doesn't block when sending
+	data, stop = dataChan, stopChan
+
+	go func() {
+		defer close(stopChan)
+		defer close(dataChan)
+
+		// total expected number of items
+		total := 1 // start with total > 0 to enter the first loop iteration
+		// total number of items received
+		n := 0
+		for page := 1; n < total; page++ {
+			urlPath := pageFn(page)
+
+			result := new(struct {
+				Data []T       `json:"data"`
+				Meta *api.Meta `json:"meta"`
+			})
+			if err := s.get(ctx, result, urlPath, 200); err != nil {
+				dataChan <- paginatedResult[T]{
+					Err: err,
+				}
+				return
+			}
+			for _, item := range result.Data {
+				dataChan <- paginatedResult[T]{
+					Data: item,
+				}
+			}
+			// update the expected total item number
+			total = result.Meta.Total
+			// update the actual received item count so far
+			n += len(result.Data)
+			log.Infof("queried %d/%d of type %s", n, total, reflect.TypeOf(*new(T)).Name())
+
+			// check cancel conditions (stop channel and context)
+			select {
+			case <-stopChan:
+				return
+			case <-ctx.Done():
+				return
+			default:
+				continue
+			}
+		}
+	}()
+
+	return
 }
