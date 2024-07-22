@@ -97,21 +97,18 @@ func (s *Server) GetCurrentAgent(ctx context.Context, _ *emptypb.Empty) (*pb.Age
 
 // GetFleet returns the complete list of ships in the agent's posession.
 func (s *Server) GetFleet(ctx context.Context, _ *emptypb.Empty) (*pb.Fleet, error) {
-	// we need the total ship count to enable allocation of the correct slice size
-	agent, err := s.GetCurrentAgent(ctx, nil)
-	if err != nil {
-		return nil, err
+	pageFn := func(page int) (urlPath string) {
+		return fmt.Sprintf("/my/ships?page=%d&limit=20", page)
 	}
-	// TODO: generic function to get total count from pagination Meta beforehand
-	out := make([]*pb.Ship, agent.ShipCount)
 
-	dataChan, stopChan := getPaginatedAsync[*api.Ship](
-		ctx,
-		s,
-		func(page int) (urlPath string) {
-			return fmt.Sprintf("/my/ships?page=%d&limit=20", page)
-		},
-	)
+	// we need the total ship count to enable allocation of the correct slice size
+	total, err := s.getPaginatedTotal(ctx, pageFn)
+	if err != nil {
+		return nil, fmt.Errorf("could not get agent ship count: %w", err)
+	}
+	out := make([]*pb.Ship, total)
+
+	dataChan, stopChan := getPaginatedAsync[*api.Ship](ctx, s, pageFn)
 
 	i := 0
 	for rcv := range dataChan {

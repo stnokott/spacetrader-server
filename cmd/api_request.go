@@ -166,3 +166,22 @@ func getPaginatedAsync[T any](
 
 	return
 }
+
+// getPaginatedTotal returns the total number of items for the endpoint (provided by
+// pageFn) if all pages are traversed by traversing just one page.
+//
+// Knowing the expected number of items can be useful for pre-allocating the
+// size of an array holding the paginated items, saving memory.
+func (s *Server) getPaginatedTotal(ctx context.Context, pageFn pageFunc) (int, error) {
+	result := new(struct {
+		Meta *api.Meta
+	})
+
+	path := pageFn(1) // get path for first page
+	log.Debugf("getting total for %s", path)
+
+	if err := s.get(ctx, result, path, 200); err != nil {
+		return -1, fmt.Errorf("getting total for %s: %w", path, err)
+	}
+	return result.Meta.Total, nil
+}
