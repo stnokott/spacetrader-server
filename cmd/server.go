@@ -66,13 +66,34 @@ func (s *Server) Listen(port int) error {
 	if err != nil {
 		return fmt.Errorf("TCP listen: %w", err)
 	}
-	srv := grpc.NewServer()
+	srv := grpc.NewServer(
+		grpc.ChainStreamInterceptor(onGrpcStream),
+		grpc.ChainUnaryInterceptor(onGrpcUnary),
+	)
 	pb.RegisterSpacetraderServer(srv, s)
 	log.WithField("port", port).Infof("gRPC server listening")
 	if err := srv.Serve(lis); err != nil {
 		return fmt.Errorf("TCP serve: %w", err)
 	}
 	return nil
+}
+
+func onGrpcStream(srv any, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+	log.Debugf("gRPC call to %s", info.FullMethod)
+	err := handler(srv, stream)
+	if err != nil {
+		log.Errorf("gRPC error streaming %s: %v", info.FullMethod, err)
+	}
+	return err
+}
+
+func onGrpcUnary(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
+	log.Debugf("gRPC call to %s", info.FullMethod)
+	resp, err = handler(ctx, req)
+	if err != nil {
+		log.Errorf("gRPC error unary %s: %v", info.FullMethod, err)
+	}
+	return
 }
 
 // Ping is used by clients to ensure this server is online.
