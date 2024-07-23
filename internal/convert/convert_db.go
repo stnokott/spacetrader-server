@@ -35,6 +35,9 @@ func ParseSystemType(src string) (pb.System_Type, error) {
 
 // ParseDBFactions splits a string representation of 0..n factions into a list of enums.
 func ParseDBFactions(src string) ([]pb.Faction, error) {
+	if src == "" {
+		return []pb.Faction{}, nil
+	}
 	split := strings.Split(src, ",")
 	factions := make([]pb.Faction, len(split))
 	for i, s := range split {
