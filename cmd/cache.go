@@ -8,7 +8,9 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
+
 	"github.com/stnokott/spacetrader/internal/api"
+	"github.com/stnokott/spacetrader/internal/db/query"
 	pb "github.com/stnokott/spacetrader/internal/proto"
 )
 
@@ -75,20 +77,10 @@ func (s *Server) replaceSystems(ctx context.Context) (err error) {
 		}
 	}()
 
-	// delete existing index
-	if _, err = tx.ExecContext(ctx, "DELETE FROM systems"); err != nil {
-		return
-	}
+	q := s.query.WithTx(tx)
 
-	// create prepared statement
-	var insert *sql.Stmt
-	insert, err = tx.PrepareContext(ctx, `
-		INSERT INTO systems VALUES (
-			$symbol, $x, $y, $type, $factions
-		);
-	`)
-	if err != nil {
-		err = fmt.Errorf("preparing INSERT statement: %w", err)
+	// delete existing index
+	if err = q.TruncateSystems(ctx); err != nil {
 		return
 	}
 
@@ -107,14 +99,14 @@ func (s *Server) replaceSystems(ctx context.Context) (err error) {
 		for j, fac := range system.Factions {
 			factions[j] = string(fac.Symbol)
 		}
-		if _, err = insert.ExecContext(
-			ctx,
-			sql.Named("symbol", system.Symbol),
-			sql.Named("x", system.X),
-			sql.Named("y", system.Y),
-			sql.Named("type", string(system.Type)),
-			sql.Named("factions", strings.Join(factions, ",")),
-		); err != nil {
+
+		if err = s.query.InsertSystem(ctx, query.InsertSystemParams{
+			Symbol:   system.Symbol,
+			X:        int64(system.X),
+			Y:        int64(system.Y),
+			Type:     string(system.Type),
+			Factions: strings.Join(factions, ","),
+		}); err != nil {
 			err = fmt.Errorf("inserting system '%s': %v", system.Symbol, err)
 			return
 		}
@@ -134,49 +126,27 @@ func (s *Server) hasSystems(ctx context.Context) (bool, error) {
 	return hasNext, nil
 }
 
-const _sqlGetSystemsInRect = `
-	SELECT symbol, x, y, type, factions FROM systems
-	WHERE TRUE
-		AND x >= $x_min AND x <= $x_max
-		AND y >= $y_min AND y <= $y_max
-`
-
 // GetSystemsInRect streams all systems whose coordinates fall into rect.
 func (s *Server) GetSystemsInRect(rect *pb.Rect, stream pb.Spacetrader_GetSystemsInRectServer) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	rows, err := s.db.QueryContext(
-		ctx,
-		_sqlGetSystemsInRect,
-		sql.Named("x_min", rect.Start.X),
-		sql.Named("y_min", rect.Start.Y),
-		sql.Named("x_max", rect.End.X),
-		sql.Named("y_max", rect.End.Y),
-	)
+	rows, err := s.query.SelectSystemsInRect(ctx, query.SelectSystemsInRectParams{
+		XMin: int64(rect.Start.X),
+		YMin: int64(rect.Start.Y),
+		XMax: int64(rect.End.X),
+		YMax: int64(rect.End.Y),
+	})
 	if err != nil {
 		return fmt.Errorf("querying systems within rect: %w", err)
 	}
-	defer func() {
-		_ = rows.Close()
-	}()
 
-	type result struct {
-		Symbol   string
-		X        int32
-		Y        int32
-		Type     string
-		Factions string
-	}
-	for rows.Next() {
-		dst := result{}
-		if err = rows.Scan(&dst.Symbol, &dst.X, &dst.Y, &dst.Type, &dst.Factions); err != nil {
-			return fmt.Errorf("reading system from query result: %w", err)
-		}
+	// TODO: use converter
+	for _, row := range rows {
 		if err = stream.Send(&pb.System{
-			Id:       dst.Symbol,
-			X:        dst.X,
-			Y:        dst.Y,
+			Id:       row.Symbol,
+			X:        int32(row.X),
+			Y:        int32(row.Y),
 			Type:     pb.System_BLACK_HOLE,           // TODO: use correct type
 			Factions: []pb.Faction{pb.Faction_AEGIS}, // TODO: use correct type
 		}); err != nil {
