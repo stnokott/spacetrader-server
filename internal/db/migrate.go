@@ -15,7 +15,7 @@ var migrationsFS embed.FS
 
 // MigrateUp applies the required migration SQLs to get to the latest schema.
 func MigrateUp(conn *sql.DB) error {
-	d, err := iofs.New(migrationsFS, "internal/db/schema")
+	d, err := iofs.New(migrationsFS, "schema")
 	if err != nil {
 		return fmt.Errorf("opening migrations directory: %w", err)
 	}
