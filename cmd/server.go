@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"net"
 	"time"
@@ -15,13 +16,15 @@ import (
 
 	"google.golang.org/protobuf/types/known/emptypb"
 
+	"github.com/stnokott/spacetrader/internal/db/query"
 	pb "github.com/stnokott/spacetrader/internal/proto"
 )
 
 // Server performs requests to the SpaceTraders API and offers them via gRPC.
 type Server struct {
-	api *resty.Client
-	db  *sql.DB
+	api   *resty.Client
+	db    *sql.DB
+	query *query.Queries
 
 	pb.UnimplementedSpacetraderServer
 }
@@ -31,22 +34,28 @@ func New(baseURL string, token string, dbFile string) (*Server, error) {
 	r := resty.New()
 	configureRestyClient(r, baseURL, token)
 
-	ctxDB, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	db, err := newDB(dbFile)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	db, err := newDB(ctxDB, dbFile)
+	q, err := query.Prepare(ctx, db)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Server{
-		api: r,
-		db:  db,
+		api:   r,
+		db:    db,
+		query: q,
 	}, nil
 }
 
 // Close terminates all underlying connections.
 func (s *Server) Close() error {
-	return s.db.Close()
+	return errors.Join(s.query.Close(), s.db.Close())
 }
 
 // Listen starts the gRPC server on the specified port.
