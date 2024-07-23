@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -128,7 +127,7 @@ func getPaginated[T any](
 			// update the actual received item count so far
 			n++
 		}
-		log.Infof("queried %d/%d of type %s", n, total, reflect.TypeOf(*new(T)).Name())
+		log.Infof("queried %d/%d of type %T", n, total, *new(T))
 	}
 
 	return items, nil
