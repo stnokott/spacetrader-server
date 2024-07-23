@@ -10,6 +10,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/stnokott/spacetrader/internal/api"
+	"github.com/stnokott/spacetrader/internal/convert"
 	"github.com/stnokott/spacetrader/internal/db/query"
 	pb "github.com/stnokott/spacetrader/internal/proto"
 )
@@ -141,15 +142,13 @@ func (s *Server) GetSystemsInRect(rect *pb.Rect, stream pb.Spacetrader_GetSystem
 		return fmt.Errorf("querying systems within rect: %w", err)
 	}
 
-	// TODO: use converter
 	for _, row := range rows {
-		if err = stream.Send(&pb.System{
-			Id:       row.Symbol,
-			X:        int32(row.X),
-			Y:        int32(row.Y),
-			Type:     pb.System_BLACK_HOLE,           // TODO: use correct type
-			Factions: []pb.Faction{pb.Faction_AEGIS}, // TODO: use correct type
-		}); err != nil {
+		system, err := convert.ConvertSystem(&row)
+		if err != nil {
+			return err
+		}
+
+		if err = stream.Send(system); err != nil {
 			return fmt.Errorf("sending system via gRPC: %w", err)
 		}
 	}
