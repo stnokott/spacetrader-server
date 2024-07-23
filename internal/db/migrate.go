@@ -28,5 +28,9 @@ func MigrateUp(conn *sql.DB) error {
 	if err != nil {
 		return fmt.Errorf("creating migration instance: %w", err)
 	}
-	return m.Up()
+	err = m.Up()
+	if err == migrate.ErrNoChange {
+		return nil
+	}
+	return err
 }
