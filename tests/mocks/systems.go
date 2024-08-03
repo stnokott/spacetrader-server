@@ -5,7 +5,7 @@ import (
 	"math/rand"
 	"strconv"
 
-	pb "github.com/stnokott/spacetrader/internal/proto"
+	pb "github.com/stnokott/spacetrader-server/internal/proto"
 )
 
 // GenerateSystems creates an artifial list of systems with a specified length.

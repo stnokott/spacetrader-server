@@ -7,7 +7,7 @@ import (
 
 	"github.com/go-resty/resty/v2"
 	log "github.com/sirupsen/logrus"
-	"github.com/stnokott/spacetrader/internal/api"
+	"github.com/stnokott/spacetrader-server/internal/api"
 	"go.uber.org/ratelimit"
 )
 
@@ -17,7 +17,7 @@ func configureRestyClient(r *resty.Client, baseURL string, token string) {
 		SetAuthToken(token).
 		SetHeaders(map[string]string{
 			"Accept":     "application/json",
-			"User-Agent": "github.com/stnokott/spacetraders",
+			"User-Agent": "github.com/stnokott/spacetrader-servers",
 		}).
 		SetTimeout(5 * time.Second). // TODO: allow configuring from env
 		SetLogger(log.StandardLogger()).

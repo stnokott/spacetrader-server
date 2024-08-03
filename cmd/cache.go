@@ -9,10 +9,10 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/stnokott/spacetrader/internal/api"
-	"github.com/stnokott/spacetrader/internal/convert"
-	"github.com/stnokott/spacetrader/internal/db/query"
-	pb "github.com/stnokott/spacetrader/internal/proto"
+	"github.com/stnokott/spacetrader-server/internal/api"
+	"github.com/stnokott/spacetrader-server/internal/convert"
+	"github.com/stnokott/spacetrader-server/internal/db/query"
+	pb "github.com/stnokott/spacetrader-server/internal/proto"
 )
 
 var buildSystemIndexTimeout = 10 * time.Minute

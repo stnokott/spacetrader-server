@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/jinzhu/copier"
-	"github.com/stnokott/spacetrader/internal/api"
-	pb "github.com/stnokott/spacetrader/internal/proto"
+	"github.com/stnokott/spacetrader-server/internal/api"
+	pb "github.com/stnokott/spacetrader-server/internal/proto"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )

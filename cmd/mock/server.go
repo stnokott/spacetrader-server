@@ -9,8 +9,8 @@ import (
 	"net"
 	"time"
 
-	pb "github.com/stnokott/spacetrader/internal/proto"
-	"github.com/stnokott/spacetrader/tests/mocks"
+	pb "github.com/stnokott/spacetrader-server/internal/proto"
+	"github.com/stnokott/spacetrader-server/tests/mocks"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"

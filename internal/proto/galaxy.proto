@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package proto;
 
-option go_package = "github.com/stnokott/spacetrader/internal/proto";
+option go_package = "github.com/stnokott/spacetrader-server/internal/proto";
 option csharp_namespace = "GrpcSpacetrader";
 
 message System {

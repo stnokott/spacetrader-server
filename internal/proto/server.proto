@@ -6,7 +6,7 @@ import "google/protobuf/empty.proto";
 import "ship.proto";
 import "galaxy.proto";
 
-option go_package = "github.com/stnokott/spacetrader/internal/proto";
+option go_package = "github.com/stnokott/spacetrader-server/internal/proto";
 option csharp_namespace = "GrpcSpacetrader";
 
 package proto;

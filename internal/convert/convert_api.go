@@ -4,16 +4,16 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/stnokott/spacetrader/internal/api"
+	"github.com/stnokott/spacetrader-server/internal/api"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	pb "github.com/stnokott/spacetrader/internal/proto"
+	pb "github.com/stnokott/spacetrader-server/internal/proto"
 )
 
 // ConverterAPI converts between API responses and protobuf structs.
 // goverter:converter
 // goverter:output:file ./convert_api.gen.go
-// goverter:output:package github.com/stnokott/spacetrader/internal/convert
+// goverter:output:package github.com/stnokott/spacetrader-server/internal/convert
 // goverter:output:format function
 // goverter:ignoreUnexported yes
 // goverter:extend IntTo.*

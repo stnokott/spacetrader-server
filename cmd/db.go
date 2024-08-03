@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/stnokott/spacetrader/internal/db"
+	"github.com/stnokott/spacetrader-server/internal/db"
 	_ "modernc.org/sqlite" // SQLite bindings
 )
 

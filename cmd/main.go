@@ -5,7 +5,7 @@ import (
 	"os"
 
 	log "github.com/sirupsen/logrus"
-	"github.com/stnokott/spacetrader/internal/config"
+	"github.com/stnokott/spacetrader-server/internal/config"
 )
 
 const (
