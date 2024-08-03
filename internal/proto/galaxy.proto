@@ -72,7 +72,7 @@ enum Faction {
 	AEGIS = 9;
 	UNITED = 10;
 	SOLITARY = 11;
-	COBALD = 12;
+	COBALT = 12;
 	OMEGA = 13;
 	ECHO = 14;
 	LORDS = 15;
