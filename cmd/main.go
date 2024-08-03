@@ -35,19 +35,22 @@ func main() {
 	// load config
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatal(cfg)
+		log.Error(cfg)
+		return
 	}
 
 	// create server
 	s, err := New(baseURL, cfg.AgentToken, "./systems.db")
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
+		return
 	}
 	defer func() {
 		_ = s.Close()
 	}()
+	// TODO: update in background, return ETA if queried
 	if err := s.UpdateSystemIndex(false); err != nil {
-		log.Println(err)
+		log.Error(err)
 		return
 	}
 
