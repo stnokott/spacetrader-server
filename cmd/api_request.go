@@ -127,7 +127,7 @@ func getPaginated[T any](
 			// update the actual received item count so far
 			n++
 		}
-		log.Infof("queried %d/%d of type %T", n, total, *new(T))
+		log.Debugf("queried %03.0f%% (%d/%d) of type %T", float64(n)/float64(total)*100, n, total, *new(T))
 	}
 
 	return items, nil
