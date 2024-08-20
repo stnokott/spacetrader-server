@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/jinzhu/copier"
-	pb "github.com/stnokott/spacetrader/internal/proto"
+	pb "github.com/stnokott/spacetrader-server/internal/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 

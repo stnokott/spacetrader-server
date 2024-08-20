@@ -1,4 +1,4 @@
-module github.com/stnokott/spacetrader
+module github.com/stnokott/spacetrader-server
 
 go 1.22.5
 

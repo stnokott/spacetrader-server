@@ -4,8 +4,8 @@
 package convert
 
 import (
-	query "github.com/stnokott/spacetrader/internal/db/query"
-	proto "github.com/stnokott/spacetrader/internal/proto"
+	query "github.com/stnokott/spacetrader-server/internal/db/query"
+	proto "github.com/stnokott/spacetrader-server/internal/proto"
 )
 
 func ConvertSystem(source *query.System) (*proto.System, error) {

@@ -5,8 +5,8 @@ package convert
 
 import (
 	"fmt"
-	api "github.com/stnokott/spacetrader/internal/api"
-	proto "github.com/stnokott/spacetrader/internal/proto"
+	api "github.com/stnokott/spacetrader-server/internal/api"
+	proto "github.com/stnokott/spacetrader-server/internal/proto"
 	"time"
 )
 

@@ -10,14 +10,14 @@ import (
 
 	"github.com/go-resty/resty/v2"
 	log "github.com/sirupsen/logrus"
-	"github.com/stnokott/spacetrader/internal/api"
-	"github.com/stnokott/spacetrader/internal/convert"
+	"github.com/stnokott/spacetrader-server/internal/api"
+	"github.com/stnokott/spacetrader-server/internal/convert"
 	"google.golang.org/grpc"
 
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	"github.com/stnokott/spacetrader/internal/db/query"
-	pb "github.com/stnokott/spacetrader/internal/proto"
+	"github.com/stnokott/spacetrader-server/internal/db/query"
+	pb "github.com/stnokott/spacetrader-server/internal/proto"
 )
 
 // Server performs requests to the SpaceTraders API and offers them via gRPC.

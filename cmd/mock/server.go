@@ -9,15 +9,15 @@ import (
 	"net"
 	"time"
 
-	pb "github.com/stnokott/spacetrader/internal/proto"
-	"github.com/stnokott/spacetrader/tests/mocks"
+	pb "github.com/stnokott/spacetrader-server/internal/proto"
+	"github.com/stnokott/spacetrader-server/tests/mocks"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (
-	port = 44444
+	port = 55555
 )
 
 // MockServer returns mocked results for all gRPC services.
@@ -77,6 +77,13 @@ func (s *MockServer) GetFleet(_ context.Context, _ *emptypb.Empty) (*pb.Fleet, e
 	return &pb.Fleet{Ships: []*pb.Ship{
 		ship1, ship2,
 	}}, nil
+}
+
+// GetShipCoordinates is a mock.
+func (s *MockServer) GetShipCoordinates(_ context.Context, _ *pb.GetShipCoordinatesRequest) (*pb.GetShipCoordinatesResponse, error) {
+	return &pb.GetShipCoordinatesResponse{
+		X: 0, Y: 0,
+	}, nil
 }
 
 // GetSystemsInRect is a mock.

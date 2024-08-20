@@ -7,9 +7,11 @@ import (
 
 	"github.com/go-resty/resty/v2"
 	log "github.com/sirupsen/logrus"
-	"github.com/stnokott/spacetrader/internal/api"
+	"github.com/stnokott/spacetrader-server/internal/api"
 	"go.uber.org/ratelimit"
 )
+
+// TODO: query /my/agent on startup to validate token
 
 func configureRestyClient(r *resty.Client, baseURL string, token string) {
 	r.
@@ -17,7 +19,7 @@ func configureRestyClient(r *resty.Client, baseURL string, token string) {
 		SetAuthToken(token).
 		SetHeaders(map[string]string{
 			"Accept":     "application/json",
-			"User-Agent": "github.com/stnokott/spacetraders",
+			"User-Agent": "github.com/stnokott/spacetrader-servers",
 		}).
 		SetTimeout(5 * time.Second). // TODO: allow configuring from env
 		SetLogger(log.StandardLogger()).
@@ -127,7 +129,7 @@ func getPaginated[T any](
 			// update the actual received item count so far
 			n++
 		}
-		log.Infof("queried %d/%d of type %T", n, total, *new(T))
+		log.Debugf("queried %03.0f%% (%d/%d) of type %T", float64(n)/float64(total)*100, n, total, *new(T))
 	}
 
 	return items, nil

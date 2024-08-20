@@ -24,6 +24,9 @@ func New(db DBTX) *Queries {
 func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	q := Queries{db: db}
 	var err error
+	if q.getSystemByNameStmt, err = db.PrepareContext(ctx, getSystemByName); err != nil {
+		return nil, fmt.Errorf("error preparing query GetSystemByName: %w", err)
+	}
 	if q.insertSystemStmt, err = db.PrepareContext(ctx, insertSystem); err != nil {
 		return nil, fmt.Errorf("error preparing query InsertSystem: %w", err)
 	}
@@ -38,6 +41,11 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 
 func (q *Queries) Close() error {
 	var err error
+	if q.getSystemByNameStmt != nil {
+		if cerr := q.getSystemByNameStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getSystemByNameStmt: %w", cerr)
+		}
+	}
 	if q.insertSystemStmt != nil {
 		if cerr := q.insertSystemStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing insertSystemStmt: %w", cerr)
@@ -92,6 +100,7 @@ func (q *Queries) queryRow(ctx context.Context, stmt *sql.Stmt, query string, ar
 type Queries struct {
 	db                      DBTX
 	tx                      *sql.Tx
+	getSystemByNameStmt     *sql.Stmt
 	insertSystemStmt        *sql.Stmt
 	selectSystemsInRectStmt *sql.Stmt
 	truncateSystemsStmt     *sql.Stmt
@@ -101,6 +110,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 	return &Queries{
 		db:                      tx,
 		tx:                      tx,
+		getSystemByNameStmt:     q.getSystemByNameStmt,
 		insertSystemStmt:        q.insertSystemStmt,
 		selectSystemsInRectStmt: q.selectSystemsInRectStmt,
 		truncateSystemsStmt:     q.truncateSystemsStmt,

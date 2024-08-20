@@ -13,3 +13,7 @@ SELECT symbol, x, y, type, factions FROM systems
 
 -- name: TruncateSystems :exec
 DELETE FROM systems;
+
+-- name: GetSystemByName :one
+SELECT x, y FROM systems
+WHERE symbol = sqlc.arg(system_name);
