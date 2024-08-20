@@ -162,3 +162,25 @@ func (s *Server) GetSystemsInRect(rect *pb.Rect, stream pb.Spacetrader_GetSystem
 	}
 	return nil
 }
+
+// GetShipCoordinates returns the x and y coordinates for a ship, identified by its name
+func (s *Server) GetShipCoordinates(ctx context.Context, req *pb.GetShipCoordinatesRequest) (*pb.GetShipCoordinatesResponse, error) {
+	result := new(struct {
+		Ship *api.Ship `json:"data"`
+	})
+	if err := s.get(ctx, result, "/my/ships/"+req.ShipName, 200); err != nil {
+		return nil, err
+	}
+
+	if result.Ship == nil {
+		return nil, fmt.Errorf("no ship '%s' found in fleet", req.ShipName)
+	}
+	systemName := result.Ship.Nav.SystemSymbol
+	system, err := s.query.GetSystemByName(ctx, systemName)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.GetShipCoordinatesResponse{
+		X: int32(system.X), Y: int32(system.Y),
+	}, nil
+}

@@ -32,6 +32,6 @@ func GenerateSystems(count int, coordMin int, coordMax int) []*pb.System {
 // GenerateSystemName generates a system name with letters 0-9, with added padding for
 // the total number of systems expected.
 func GenerateSystemName(total int, i int) string {
-	fmtString := fmt.Sprintf("%%0%dd", len(strconv.Itoa(total)))
+	fmtString := fmt.Sprintf("SYSTEM-%%0%dd", len(strconv.Itoa(total)))
 	return fmt.Sprintf(fmtString, i)
 }

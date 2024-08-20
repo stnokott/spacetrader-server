@@ -9,6 +9,23 @@ import (
 	"context"
 )
 
+const getSystemByName = `-- name: GetSystemByName :one
+SELECT x, y FROM systems
+WHERE symbol = ?1
+`
+
+type GetSystemByNameRow struct {
+	X int64
+	Y int64
+}
+
+func (q *Queries) GetSystemByName(ctx context.Context, systemName string) (GetSystemByNameRow, error) {
+	row := q.queryRow(ctx, q.getSystemByNameStmt, getSystemByName, systemName)
+	var i GetSystemByNameRow
+	err := row.Scan(&i.X, &i.Y)
+	return i, err
+}
+
 const insertSystem = `-- name: InsertSystem :exec
 INSERT INTO systems (
 	symbol, x, y, type, factions	

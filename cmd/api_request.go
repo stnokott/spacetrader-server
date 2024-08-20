@@ -11,6 +11,8 @@ import (
 	"go.uber.org/ratelimit"
 )
 
+// TODO: query /my/agent on startup to validate token
+
 func configureRestyClient(r *resty.Client, baseURL string, token string) {
 	r.
 		SetBaseURL(baseURL).
