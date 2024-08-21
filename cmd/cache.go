@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"strings"
 	"time"
@@ -75,36 +74,18 @@ func (s *Server) replaceSystems(ctx context.Context) (err error) {
 	}
 
 	log.Infof("step 2/2: inserting %d systems into DB", len(systems))
-	log.Debug("creating transaction")
-	// TODO: create utility function for dealing with transactions.
-	// e.g. runWithTx -> create tx, wrap sqlc query in tx, run queries, return
-	// encountering any error along the executed queries will result in a rollback
-	var tx *sql.Tx
-	tx, err = s.db.BeginTx(ctx, nil)
+
+	tx, err := query.WithTx(ctx, s.db, s.query)
 	if err != nil {
-		err = fmt.Errorf("creating SQLite transaction: %w", err)
-		return
+		return err
 	}
 	defer func() {
-		if err != nil {
-			log.Debug("rolling transaction back")
-			if errRollback := tx.Rollback(); errRollback != nil {
-				log.Errorf("failed to rollback: %v", errRollback)
-			}
-		} else {
-			log.Debug("committing transaction")
-			if errCommit := tx.Commit(); errCommit != nil {
-				log.Errorf("failed to commit: %v", errCommit)
-				err = errCommit
-			}
-		}
+		err = tx.Done(err)
 	}()
-
-	q := s.query.WithTx(tx)
 
 	// delete existing index
 	log.Debug("clearing existing system index")
-	if err = q.TruncateSystems(ctx); err != nil {
+	if err = tx.TruncateSystems(ctx); err != nil {
 		return
 	}
 
@@ -126,7 +107,7 @@ func (s *Server) replaceSystems(ctx context.Context) (err error) {
 			factions[j] = string(fac.Symbol)
 		}
 
-		if err = q.InsertSystem(ctx, query.InsertSystemParams{
+		if err = tx.InsertSystem(ctx, query.InsertSystemParams{
 			Symbol:   system.Symbol,
 			X:        int64(system.X),
 			Y:        int64(system.Y),
@@ -156,33 +137,20 @@ func (s *Server) GetFleet(ctx context.Context, _ *emptypb.Empty) (fleet *pb.Flee
 
 	converted := make([]*pb.Ship, len(ships))
 
-	var tx *sql.Tx
-	tx, err = s.db.BeginTx(ctx, nil)
+	tx, err := query.WithTx(ctx, s.db, s.query)
 	if err != nil {
-		return nil, fmt.Errorf("creating transaction: %w", err)
+		return nil, err
 	}
 	defer func() {
-		if err != nil {
-			log.Debug("rolling transaction back")
-			if errRollback := tx.Rollback(); errRollback != nil {
-				log.Errorf("failed to rollback: %v", errRollback)
-			}
-		} else {
-			log.Debug("committing transaction")
-			if errCommit := tx.Commit(); errCommit != nil {
-				log.Errorf("failed to commit: %v", errCommit)
-				err = errCommit
-			}
-		}
+		err = tx.Done(err)
 	}()
 
-	q := s.query.WithTx(tx)
-	if err = q.TruncateShips(ctx); err != nil {
+	if err = tx.TruncateShips(ctx); err != nil {
 		return nil, fmt.Errorf("truncating ships table: %w", err)
 	}
 
 	for i, ship := range ships {
-		if err := q.InsertShip(ctx, query.InsertShipParams{
+		if err := tx.InsertShip(ctx, query.InsertShipParams{
 			Symbol:          ship.Symbol,
 			CurrentSystem:   ship.Nav.SystemSymbol,
 			CurrentWaypoint: ship.Nav.WaypointSymbol,
