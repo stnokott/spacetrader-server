@@ -124,26 +124,3 @@ func (s *Server) GetCurrentAgent(ctx context.Context, _ *emptypb.Empty) (*pb.Age
 
 	return convert.ConvertAgent(result.Data)
 }
-
-// GetFleet returns the complete list of ships in the agent's posession.
-func (s *Server) GetFleet(ctx context.Context, _ *emptypb.Empty) (*pb.Fleet, error) {
-	ships, err := getPaginated[*api.Ship](
-		ctx,
-		s,
-		func(page int) (urlPath string) {
-			return fmt.Sprintf("/my/ships?page=%d&limit=20", page)
-		},
-	)
-	if err != nil {
-		return nil, fmt.Errorf("querying ships: %w", err)
-	}
-
-	converted := make([]*pb.Ship, len(ships))
-
-	for i, ship := range ships {
-		if converted[i], err = convert.ConvertShip(ship); err != nil {
-			return nil, fmt.Errorf("converting ship: %w", err)
-		}
-	}
-	return &pb.Fleet{Ships: converted}, nil
-}

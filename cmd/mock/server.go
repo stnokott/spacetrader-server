@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"math/rand"
 	"net"
 	"time"
 
@@ -93,7 +94,10 @@ func (s *MockServer) GetSystemsInRect(rect *pb.Rect, stream pb.Spacetrader_GetSy
 			system.X <= rect.End.X &&
 			system.Y >= rect.Start.Y &&
 			system.Y <= rect.End.Y {
-			if err := stream.Send(system); err != nil {
+			if err := stream.Send(&pb.GetSystemsInRectResponse{
+				System:    system,
+				ShipCount: rand.Int31n(3),
+			}); err != nil {
 				return fmt.Errorf("sending system: %w", err)
 			}
 		}

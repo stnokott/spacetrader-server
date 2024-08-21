@@ -115,7 +115,7 @@ func (c *spacetraderClient) GetSystemsInRect(ctx context.Context, in *Rect, opts
 }
 
 type Spacetrader_GetSystemsInRectClient interface {
-	Recv() (*System, error)
+	Recv() (*GetSystemsInRectResponse, error)
 	grpc.ClientStream
 }
 
@@ -123,8 +123,8 @@ type spacetraderGetSystemsInRectClient struct {
 	grpc.ClientStream
 }
 
-func (x *spacetraderGetSystemsInRectClient) Recv() (*System, error) {
-	m := new(System)
+func (x *spacetraderGetSystemsInRectClient) Recv() (*GetSystemsInRectResponse, error) {
+	m := new(GetSystemsInRectResponse)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -278,7 +278,7 @@ func _Spacetrader_GetSystemsInRect_Handler(srv interface{}, stream grpc.ServerSt
 }
 
 type Spacetrader_GetSystemsInRectServer interface {
-	Send(*System) error
+	Send(*GetSystemsInRectResponse) error
 	grpc.ServerStream
 }
 
@@ -286,7 +286,7 @@ type spacetraderGetSystemsInRectServer struct {
 	grpc.ServerStream
 }
 
-func (x *spacetraderGetSystemsInRectServer) Send(m *System) error {
+func (x *spacetraderGetSystemsInRectServer) Send(m *GetSystemsInRectResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 

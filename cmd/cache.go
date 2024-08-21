@@ -2,12 +2,12 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/stnokott/spacetrader-server/internal/api"
 	"github.com/stnokott/spacetrader-server/internal/convert"
@@ -44,7 +44,19 @@ func (s *Server) UpdateSystemIndex(force bool) error {
 	return s.replaceSystems(ctx)
 }
 
-// replaceSystems replaces the contents of the `systems` table with results from systemChan.
+// hasSystems returns true if the systems table has at least one row, indicating
+// an existing Systems index.
+func (s *Server) hasSystems(ctx context.Context) (bool, error) {
+	result, err := s.db.QueryContext(ctx, "SELECT 1 FROM systems LIMIT 1")
+	if err != nil {
+		return false, err
+	}
+	hasNext := result.Next()
+	_ = result.Close()
+	return hasNext, nil
+}
+
+// replaceSystems replaces the contents of the `systems` table with results from the API.
 // It continues reading from systemChan until it is closed or ctx expires.
 func (s *Server) replaceSystems(ctx context.Context) (err error) {
 	log.Info("step 1/2: querying systems from API")
@@ -62,32 +74,18 @@ func (s *Server) replaceSystems(ctx context.Context) (err error) {
 	}
 
 	log.Infof("step 2/2: inserting %d systems into DB", len(systems))
-	log.Debug("creating transaction")
-	var tx *sql.Tx
-	tx, err = s.db.BeginTx(ctx, nil)
+
+	tx, err := query.WithTx(ctx, s.db, s.query)
 	if err != nil {
-		err = fmt.Errorf("creating SQLite transaction: %w", err)
-		return
+		return err
 	}
 	defer func() {
-		if err != nil {
-			log.Debug("rolling transaction back")
-			if errRollback := tx.Rollback(); errRollback != nil {
-				log.Errorf("failed to rollback: %v", errRollback)
-			}
-		} else {
-			log.Debug("committing transaction")
-			if errCommit := tx.Commit(); errCommit != nil {
-				log.Errorf("failed to commit: %v", errCommit)
-			}
-		}
+		err = tx.Done(err)
 	}()
-
-	q := s.query.WithTx(tx)
 
 	// delete existing index
 	log.Debug("clearing existing system index")
-	if err = q.TruncateSystems(ctx); err != nil {
+	if err = tx.TruncateSystems(ctx); err != nil {
 		return
 	}
 
@@ -109,7 +107,7 @@ func (s *Server) replaceSystems(ctx context.Context) (err error) {
 			factions[j] = string(fac.Symbol)
 		}
 
-		if err = q.InsertSystem(ctx, query.InsertSystemParams{
+		if err = tx.InsertSystem(ctx, query.InsertSystemParams{
 			Symbol:   system.Symbol,
 			X:        int64(system.X),
 			Y:        int64(system.Y),
@@ -123,44 +121,50 @@ func (s *Server) replaceSystems(ctx context.Context) (err error) {
 	return
 }
 
-// hasSystems returns true if the systems table has at least one row, indicating
-// an existing Systems index.
-func (s *Server) hasSystems(ctx context.Context) (bool, error) {
-	result, err := s.db.QueryContext(ctx, "SELECT 1 FROM systems LIMIT 1")
+// GetFleet returns the complete list of ships in the agent's posession.
+func (s *Server) GetFleet(ctx context.Context, _ *emptypb.Empty) (fleet *pb.Fleet, err error) {
+	var ships []*api.Ship
+	ships, err = getPaginated[*api.Ship](
+		ctx,
+		s,
+		func(page int) (urlPath string) {
+			return fmt.Sprintf("/my/ships?page=%d&limit=20", page)
+		},
+	)
 	if err != nil {
-		return false, err
-	}
-	hasNext := result.Next()
-	_ = result.Close()
-	return hasNext, nil
-}
-
-// GetSystemsInRect streams all systems whose coordinates fall into rect.
-func (s *Server) GetSystemsInRect(rect *pb.Rect, stream pb.Spacetrader_GetSystemsInRectServer) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	rows, err := s.query.SelectSystemsInRect(ctx, query.SelectSystemsInRectParams{
-		XMin: int64(rect.Start.X),
-		YMin: int64(rect.Start.Y),
-		XMax: int64(rect.End.X),
-		YMax: int64(rect.End.Y),
-	})
-	if err != nil {
-		return fmt.Errorf("querying systems within rect: %w", err)
+		return nil, fmt.Errorf("querying ships: %w", err)
 	}
 
-	for _, row := range rows {
-		system, err := convert.ConvertSystem(&row)
-		if err != nil {
-			return err
+	converted := make([]*pb.Ship, len(ships))
+
+	tx, err := query.WithTx(ctx, s.db, s.query)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		err = tx.Done(err)
+	}()
+
+	if err = tx.TruncateShips(ctx); err != nil {
+		return nil, fmt.Errorf("truncating ships table: %w", err)
+	}
+
+	for i, ship := range ships {
+		if err := tx.InsertShip(ctx, query.InsertShipParams{
+			Symbol:          ship.Symbol,
+			CurrentSystem:   ship.Nav.SystemSymbol,
+			CurrentWaypoint: ship.Nav.WaypointSymbol,
+		}); err != nil {
+			return nil, fmt.Errorf("inserting ship into DB: %w", err)
 		}
 
-		if err = stream.Send(system); err != nil {
-			return fmt.Errorf("sending system via gRPC: %w", err)
+		if converted[i], err = convert.ConvertShip(ship); err != nil {
+			return nil, fmt.Errorf("converting ship: %w", err)
 		}
 	}
-	return nil
+
+	fleet = &pb.Fleet{Ships: converted}
+	return
 }
 
 // GetShipCoordinates returns the x and y coordinates for a ship, identified by its name
@@ -183,4 +187,35 @@ func (s *Server) GetShipCoordinates(ctx context.Context, req *pb.GetShipCoordina
 	return &pb.GetShipCoordinatesResponse{
 		X: int32(system.X), Y: int32(system.Y),
 	}, nil
+}
+
+// GetSystemsInRect streams all systems whose coordinates fall into rect.
+func (s *Server) GetSystemsInRect(rect *pb.Rect, stream pb.Spacetrader_GetSystemsInRectServer) error {
+	ctx, cancel := context.WithTimeout(stream.Context(), 5*time.Second)
+	defer cancel()
+
+	rows, err := s.query.GetSystemsInRect(ctx, query.GetSystemsInRectParams{
+		XMin: int64(rect.Start.X),
+		YMin: int64(rect.Start.Y),
+		XMax: int64(rect.End.X),
+		YMax: int64(rect.End.Y),
+	})
+	if err != nil {
+		return fmt.Errorf("querying systems within rect: %w", err)
+	}
+
+	for _, row := range rows {
+		system, err := convert.ConvertSystem(&row.System)
+		if err != nil {
+			return err
+		}
+
+		if err = stream.Send(&pb.GetSystemsInRectResponse{
+			System:    system,
+			ShipCount: int32(row.ShipCount),
+		}); err != nil {
+			return fmt.Errorf("sending system via gRPC: %w", err)
+		}
+	}
+	return nil
 }

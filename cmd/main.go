@@ -40,7 +40,7 @@ func main() {
 	}
 
 	// create server
-	s, err := New(baseURL, cfg.AgentToken, "./systems.db")
+	s, err := New(baseURL, cfg.AgentToken, "./galaxy.db")
 	if err != nil {
 		log.Error(err)
 		return

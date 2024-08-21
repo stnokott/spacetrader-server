@@ -26,6 +26,65 @@ func (q *Queries) GetSystemByName(ctx context.Context, systemName string) (GetSy
 	return i, err
 }
 
+const getSystemsInRect = `-- name: GetSystemsInRect :many
+SELECT
+	systems.symbol, systems.x, systems.y, systems.type, systems.factions, COUNT(ships.symbol) AS ship_count
+FROM systems
+LEFT JOIN ships
+	ON ships.current_system = systems.symbol
+WHERE TRUE
+	AND x >= ?1 AND x <= ?2
+	AND y >= ?3 AND y <= ?4
+GROUP BY systems.symbol, x, y, type, factions
+`
+
+type GetSystemsInRectParams struct {
+	XMin int64
+	XMax int64
+	YMin int64
+	YMax int64
+}
+
+type GetSystemsInRectRow struct {
+	System    System
+	ShipCount int64
+}
+
+func (q *Queries) GetSystemsInRect(ctx context.Context, arg GetSystemsInRectParams) ([]GetSystemsInRectRow, error) {
+	rows, err := q.query(ctx, q.getSystemsInRectStmt, getSystemsInRect,
+		arg.XMin,
+		arg.XMax,
+		arg.YMin,
+		arg.YMax,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetSystemsInRectRow{}
+	for rows.Next() {
+		var i GetSystemsInRectRow
+		if err := rows.Scan(
+			&i.System.Symbol,
+			&i.System.X,
+			&i.System.Y,
+			&i.System.Type,
+			&i.System.Factions,
+			&i.ShipCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const insertSystem = `-- name: InsertSystem :exec
 INSERT INTO systems (
 	symbol, x, y, type, factions	
@@ -53,55 +112,9 @@ func (q *Queries) InsertSystem(ctx context.Context, arg InsertSystemParams) erro
 	return err
 }
 
-const selectSystemsInRect = `-- name: SelectSystemsInRect :many
-SELECT symbol, x, y, type, factions FROM systems
-	WHERE TRUE
-		AND x >= ?1 AND x <= ?2
-		AND y >= ?3 AND y <= ?4
-`
-
-type SelectSystemsInRectParams struct {
-	XMin int64
-	XMax int64
-	YMin int64
-	YMax int64
-}
-
-func (q *Queries) SelectSystemsInRect(ctx context.Context, arg SelectSystemsInRectParams) ([]System, error) {
-	rows, err := q.query(ctx, q.selectSystemsInRectStmt, selectSystemsInRect,
-		arg.XMin,
-		arg.XMax,
-		arg.YMin,
-		arg.YMax,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []System{}
-	for rows.Next() {
-		var i System
-		if err := rows.Scan(
-			&i.Symbol,
-			&i.X,
-			&i.Y,
-			&i.Type,
-			&i.Factions,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const truncateSystems = `-- name: TruncateSystems :exec
+;
+
 DELETE FROM systems
 `
 
