@@ -4,6 +4,12 @@
 
 package query
 
+type Ship struct {
+	Symbol          string
+	CurrentSystem   string
+	CurrentWaypoint string
+}
+
 type System struct {
 	Symbol   string
 	X        int64

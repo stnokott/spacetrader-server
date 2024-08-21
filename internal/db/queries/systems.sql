@@ -5,11 +5,17 @@ INSERT INTO systems (
 	?, ?, ?, ?, ?
 );
 
--- name: SelectSystemsInRect :many
-SELECT symbol, x, y, type, factions FROM systems
-	WHERE TRUE
-		AND x >= sqlc.arg(x_min) AND x <= sqlc.arg(x_max)
-		AND y >= sqlc.arg(y_min) AND y <= sqlc.arg(y_max);
+-- name: GetSystemsInRect :many
+SELECT
+	sqlc.embed(systems), COUNT(ships.symbol) AS ship_count
+FROM systems
+LEFT JOIN ships
+	ON ships.current_system = systems.symbol
+WHERE TRUE
+	AND x >= sqlc.arg(x_min) AND x <= sqlc.arg(x_max)
+	AND y >= sqlc.arg(y_min) AND y <= sqlc.arg(y_max)
+GROUP BY systems.symbol, x, y, type, factions
+;
 
 -- name: TruncateSystems :exec
 DELETE FROM systems;

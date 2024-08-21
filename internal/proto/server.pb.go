@@ -227,6 +227,100 @@ func (x *Fleet) GetShips() []*Ship {
 	return nil
 }
 
+type GetShipCountInSystemRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	SystemName string `protobuf:"bytes,1,opt,name=system_name,json=systemName,proto3" json:"system_name,omitempty"`
+}
+
+func (x *GetShipCountInSystemRequest) Reset() {
+	*x = GetShipCountInSystemRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_server_proto_msgTypes[3]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *GetShipCountInSystemRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetShipCountInSystemRequest) ProtoMessage() {}
+
+func (x *GetShipCountInSystemRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_server_proto_msgTypes[3]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetShipCountInSystemRequest.ProtoReflect.Descriptor instead.
+func (*GetShipCountInSystemRequest) Descriptor() ([]byte, []int) {
+	return file_server_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *GetShipCountInSystemRequest) GetSystemName() string {
+	if x != nil {
+		return x.SystemName
+	}
+	return ""
+}
+
+type GetShipCountInSystemResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	N int32 `protobuf:"varint,1,opt,name=n,proto3" json:"n,omitempty"`
+}
+
+func (x *GetShipCountInSystemResponse) Reset() {
+	*x = GetShipCountInSystemResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_server_proto_msgTypes[4]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *GetShipCountInSystemResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetShipCountInSystemResponse) ProtoMessage() {}
+
+func (x *GetShipCountInSystemResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_server_proto_msgTypes[4]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetShipCountInSystemResponse.ProtoReflect.Descriptor instead.
+func (*GetShipCountInSystemResponse) Descriptor() ([]byte, []int) {
+	return file_server_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *GetShipCountInSystemResponse) GetN() int32 {
+	if x != nil {
+		return x.N
+	}
+	return 0
+}
+
 type GetShipCoordinatesRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -238,7 +332,7 @@ type GetShipCoordinatesRequest struct {
 func (x *GetShipCoordinatesRequest) Reset() {
 	*x = GetShipCoordinatesRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_server_proto_msgTypes[3]
+		mi := &file_server_proto_msgTypes[5]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -251,7 +345,7 @@ func (x *GetShipCoordinatesRequest) String() string {
 func (*GetShipCoordinatesRequest) ProtoMessage() {}
 
 func (x *GetShipCoordinatesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_server_proto_msgTypes[3]
+	mi := &file_server_proto_msgTypes[5]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -264,7 +358,7 @@ func (x *GetShipCoordinatesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetShipCoordinatesRequest.ProtoReflect.Descriptor instead.
 func (*GetShipCoordinatesRequest) Descriptor() ([]byte, []int) {
-	return file_server_proto_rawDescGZIP(), []int{3}
+	return file_server_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *GetShipCoordinatesRequest) GetShipName() string {
@@ -286,7 +380,7 @@ type GetShipCoordinatesResponse struct {
 func (x *GetShipCoordinatesResponse) Reset() {
 	*x = GetShipCoordinatesResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_server_proto_msgTypes[4]
+		mi := &file_server_proto_msgTypes[6]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -299,7 +393,7 @@ func (x *GetShipCoordinatesResponse) String() string {
 func (*GetShipCoordinatesResponse) ProtoMessage() {}
 
 func (x *GetShipCoordinatesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_server_proto_msgTypes[4]
+	mi := &file_server_proto_msgTypes[6]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -312,7 +406,7 @@ func (x *GetShipCoordinatesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetShipCoordinatesResponse.ProtoReflect.Descriptor instead.
 func (*GetShipCoordinatesResponse) Descriptor() ([]byte, []int) {
-	return file_server_proto_rawDescGZIP(), []int{4}
+	return file_server_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GetShipCoordinatesResponse) GetX() int32 {
@@ -329,6 +423,61 @@ func (x *GetShipCoordinatesResponse) GetY() int32 {
 	return 0
 }
 
+type GetSystemsInRectResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	System    *System `protobuf:"bytes,1,opt,name=system,proto3" json:"system,omitempty"`
+	ShipCount int32   `protobuf:"varint,2,opt,name=ship_count,json=shipCount,proto3" json:"ship_count,omitempty"`
+}
+
+func (x *GetSystemsInRectResponse) Reset() {
+	*x = GetSystemsInRectResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_server_proto_msgTypes[7]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *GetSystemsInRectResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetSystemsInRectResponse) ProtoMessage() {}
+
+func (x *GetSystemsInRectResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_server_proto_msgTypes[7]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetSystemsInRectResponse.ProtoReflect.Descriptor instead.
+func (*GetSystemsInRectResponse) Descriptor() ([]byte, []int) {
+	return file_server_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *GetSystemsInRectResponse) GetSystem() *System {
+	if x != nil {
+		return x.System
+	}
+	return nil
+}
+
+func (x *GetSystemsInRectResponse) GetShipCount() int32 {
+	if x != nil {
+		return x.ShipCount
+	}
+	return 0
+}
+
 type Vector struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -341,7 +490,7 @@ type Vector struct {
 func (x *Vector) Reset() {
 	*x = Vector{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_server_proto_msgTypes[5]
+		mi := &file_server_proto_msgTypes[8]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -354,7 +503,7 @@ func (x *Vector) String() string {
 func (*Vector) ProtoMessage() {}
 
 func (x *Vector) ProtoReflect() protoreflect.Message {
-	mi := &file_server_proto_msgTypes[5]
+	mi := &file_server_proto_msgTypes[8]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -367,7 +516,7 @@ func (x *Vector) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Vector.ProtoReflect.Descriptor instead.
 func (*Vector) Descriptor() ([]byte, []int) {
-	return file_server_proto_rawDescGZIP(), []int{5}
+	return file_server_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *Vector) GetX() int32 {
@@ -396,7 +545,7 @@ type Rect struct {
 func (x *Rect) Reset() {
 	*x = Rect{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_server_proto_msgTypes[6]
+		mi := &file_server_proto_msgTypes[9]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -409,7 +558,7 @@ func (x *Rect) String() string {
 func (*Rect) ProtoMessage() {}
 
 func (x *Rect) ProtoReflect() protoreflect.Message {
-	mi := &file_server_proto_msgTypes[6]
+	mi := &file_server_proto_msgTypes[9]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -422,7 +571,7 @@ func (x *Rect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Rect.ProtoReflect.Descriptor instead.
 func (*Rect) Descriptor() ([]byte, []int) {
-	return file_server_proto_rawDescGZIP(), []int{6}
+	return file_server_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *Rect) GetStart() *Vector {
@@ -453,7 +602,7 @@ type ServerStatus_GlobalStats struct {
 func (x *ServerStatus_GlobalStats) Reset() {
 	*x = ServerStatus_GlobalStats{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_server_proto_msgTypes[7]
+		mi := &file_server_proto_msgTypes[10]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -466,7 +615,7 @@ func (x *ServerStatus_GlobalStats) String() string {
 func (*ServerStatus_GlobalStats) ProtoMessage() {}
 
 func (x *ServerStatus_GlobalStats) ProtoReflect() protoreflect.Message {
-	mi := &file_server_proto_msgTypes[7]
+	mi := &file_server_proto_msgTypes[10]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -522,7 +671,7 @@ type ServerStatus_Announcement struct {
 func (x *ServerStatus_Announcement) Reset() {
 	*x = ServerStatus_Announcement{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_server_proto_msgTypes[8]
+		mi := &file_server_proto_msgTypes[11]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -535,7 +684,7 @@ func (x *ServerStatus_Announcement) String() string {
 func (*ServerStatus_Announcement) ProtoMessage() {}
 
 func (x *ServerStatus_Announcement) ProtoReflect() protoreflect.Message {
-	mi := &file_server_proto_msgTypes[8]
+	mi := &file_server_proto_msgTypes[11]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -618,14 +767,27 @@ var file_server_proto_rawDesc = []byte{
 	0x61, 0x72, 0x74, 0x69, 0x6e, 0x67, 0x46, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x22, 0x2a, 0x0a,
 	0x05, 0x46, 0x6c, 0x65, 0x65, 0x74, 0x12, 0x21, 0x0a, 0x05, 0x73, 0x68, 0x69, 0x70, 0x73, 0x18,
 	0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x0b, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x53, 0x68,
-	0x69, 0x70, 0x52, 0x05, 0x73, 0x68, 0x69, 0x70, 0x73, 0x22, 0x38, 0x0a, 0x19, 0x47, 0x65, 0x74,
-	0x53, 0x68, 0x69, 0x70, 0x43, 0x6f, 0x6f, 0x72, 0x64, 0x69, 0x6e, 0x61, 0x74, 0x65, 0x73, 0x52,
-	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x1b, 0x0a, 0x09, 0x73, 0x68, 0x69, 0x70, 0x5f, 0x6e,
-	0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x73, 0x68, 0x69, 0x70, 0x4e,
-	0x61, 0x6d, 0x65, 0x22, 0x38, 0x0a, 0x1a, 0x47, 0x65, 0x74, 0x53, 0x68, 0x69, 0x70, 0x43, 0x6f,
-	0x6f, 0x72, 0x64, 0x69, 0x6e, 0x61, 0x74, 0x65, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
-	0x65, 0x12, 0x0c, 0x0a, 0x01, 0x78, 0x18, 0x01, 0x20, 0x01, 0x28, 0x05, 0x52, 0x01, 0x78, 0x12,
-	0x0c, 0x0a, 0x01, 0x79, 0x18, 0x02, 0x20, 0x01, 0x28, 0x05, 0x52, 0x01, 0x79, 0x22, 0x24, 0x0a,
+	0x69, 0x70, 0x52, 0x05, 0x73, 0x68, 0x69, 0x70, 0x73, 0x22, 0x3e, 0x0a, 0x1b, 0x47, 0x65, 0x74,
+	0x53, 0x68, 0x69, 0x70, 0x43, 0x6f, 0x75, 0x6e, 0x74, 0x49, 0x6e, 0x53, 0x79, 0x73, 0x74, 0x65,
+	0x6d, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x1f, 0x0a, 0x0b, 0x73, 0x79, 0x73, 0x74,
+	0x65, 0x6d, 0x5f, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x73,
+	0x79, 0x73, 0x74, 0x65, 0x6d, 0x4e, 0x61, 0x6d, 0x65, 0x22, 0x2c, 0x0a, 0x1c, 0x47, 0x65, 0x74,
+	0x53, 0x68, 0x69, 0x70, 0x43, 0x6f, 0x75, 0x6e, 0x74, 0x49, 0x6e, 0x53, 0x79, 0x73, 0x74, 0x65,
+	0x6d, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x0c, 0x0a, 0x01, 0x6e, 0x18, 0x01,
+	0x20, 0x01, 0x28, 0x05, 0x52, 0x01, 0x6e, 0x22, 0x38, 0x0a, 0x19, 0x47, 0x65, 0x74, 0x53, 0x68,
+	0x69, 0x70, 0x43, 0x6f, 0x6f, 0x72, 0x64, 0x69, 0x6e, 0x61, 0x74, 0x65, 0x73, 0x52, 0x65, 0x71,
+	0x75, 0x65, 0x73, 0x74, 0x12, 0x1b, 0x0a, 0x09, 0x73, 0x68, 0x69, 0x70, 0x5f, 0x6e, 0x61, 0x6d,
+	0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x73, 0x68, 0x69, 0x70, 0x4e, 0x61, 0x6d,
+	0x65, 0x22, 0x38, 0x0a, 0x1a, 0x47, 0x65, 0x74, 0x53, 0x68, 0x69, 0x70, 0x43, 0x6f, 0x6f, 0x72,
+	0x64, 0x69, 0x6e, 0x61, 0x74, 0x65, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12,
+	0x0c, 0x0a, 0x01, 0x78, 0x18, 0x01, 0x20, 0x01, 0x28, 0x05, 0x52, 0x01, 0x78, 0x12, 0x0c, 0x0a,
+	0x01, 0x79, 0x18, 0x02, 0x20, 0x01, 0x28, 0x05, 0x52, 0x01, 0x79, 0x22, 0x60, 0x0a, 0x18, 0x47,
+	0x65, 0x74, 0x53, 0x79, 0x73, 0x74, 0x65, 0x6d, 0x73, 0x49, 0x6e, 0x52, 0x65, 0x63, 0x74, 0x52,
+	0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x25, 0x0a, 0x06, 0x73, 0x79, 0x73, 0x74, 0x65,
+	0x6d, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0d, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e,
+	0x53, 0x79, 0x73, 0x74, 0x65, 0x6d, 0x52, 0x06, 0x73, 0x79, 0x73, 0x74, 0x65, 0x6d, 0x12, 0x1d,
+	0x0a, 0x0a, 0x73, 0x68, 0x69, 0x70, 0x5f, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x18, 0x02, 0x20, 0x01,
+	0x28, 0x05, 0x52, 0x09, 0x73, 0x68, 0x69, 0x70, 0x43, 0x6f, 0x75, 0x6e, 0x74, 0x22, 0x24, 0x0a,
 	0x06, 0x56, 0x65, 0x63, 0x74, 0x6f, 0x72, 0x12, 0x0c, 0x0a, 0x01, 0x78, 0x18, 0x01, 0x20, 0x01,
 	0x28, 0x05, 0x52, 0x01, 0x78, 0x12, 0x0c, 0x0a, 0x01, 0x79, 0x18, 0x02, 0x20, 0x01, 0x28, 0x05,
 	0x52, 0x01, 0x79, 0x22, 0x4c, 0x0a, 0x04, 0x52, 0x65, 0x63, 0x74, 0x12, 0x23, 0x0a, 0x05, 0x73,
@@ -633,7 +795,7 @@ var file_server_proto_rawDesc = []byte{
 	0x74, 0x6f, 0x2e, 0x56, 0x65, 0x63, 0x74, 0x6f, 0x72, 0x52, 0x05, 0x73, 0x74, 0x61, 0x72, 0x74,
 	0x12, 0x1f, 0x0a, 0x03, 0x65, 0x6e, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0d, 0x2e,
 	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x56, 0x65, 0x63, 0x74, 0x6f, 0x72, 0x52, 0x03, 0x65, 0x6e,
-	0x64, 0x32, 0xfd, 0x02, 0x0a, 0x0b, 0x53, 0x70, 0x61, 0x63, 0x65, 0x74, 0x72, 0x61, 0x64, 0x65,
+	0x64, 0x32, 0x8f, 0x03, 0x0a, 0x0b, 0x53, 0x70, 0x61, 0x63, 0x65, 0x74, 0x72, 0x61, 0x64, 0x65,
 	0x72, 0x12, 0x36, 0x0a, 0x04, 0x50, 0x69, 0x6e, 0x67, 0x12, 0x16, 0x2e, 0x67, 0x6f, 0x6f, 0x67,
 	0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x45, 0x6d, 0x70, 0x74,
 	0x79, 0x1a, 0x16, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f,
@@ -654,15 +816,16 @@ var file_server_proto_rawDesc = []byte{
 	0x6e, 0x61, 0x74, 0x65, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x21, 0x2e, 0x70,
 	0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x47, 0x65, 0x74, 0x53, 0x68, 0x69, 0x70, 0x43, 0x6f, 0x6f, 0x72,
 	0x64, 0x69, 0x6e, 0x61, 0x74, 0x65, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12,
-	0x30, 0x0a, 0x10, 0x47, 0x65, 0x74, 0x53, 0x79, 0x73, 0x74, 0x65, 0x6d, 0x73, 0x49, 0x6e, 0x52,
+	0x42, 0x0a, 0x10, 0x47, 0x65, 0x74, 0x53, 0x79, 0x73, 0x74, 0x65, 0x6d, 0x73, 0x49, 0x6e, 0x52,
 	0x65, 0x63, 0x74, 0x12, 0x0b, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x52, 0x65, 0x63, 0x74,
-	0x1a, 0x0d, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x53, 0x79, 0x73, 0x74, 0x65, 0x6d, 0x30,
-	0x01, 0x42, 0x49, 0x5a, 0x35, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f,
-	0x73, 0x74, 0x6e, 0x6f, 0x6b, 0x6f, 0x74, 0x74, 0x2f, 0x73, 0x70, 0x61, 0x63, 0x65, 0x74, 0x72,
-	0x61, 0x64, 0x65, 0x72, 0x2d, 0x73, 0x65, 0x72, 0x76, 0x65, 0x72, 0x2f, 0x69, 0x6e, 0x74, 0x65,
-	0x72, 0x6e, 0x61, 0x6c, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0xaa, 0x02, 0x0f, 0x47, 0x72, 0x70,
-	0x63, 0x53, 0x70, 0x61, 0x63, 0x65, 0x74, 0x72, 0x61, 0x64, 0x65, 0x72, 0x62, 0x06, 0x70, 0x72,
-	0x6f, 0x74, 0x6f, 0x33,
+	0x1a, 0x1f, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x47, 0x65, 0x74, 0x53, 0x79, 0x73, 0x74,
+	0x65, 0x6d, 0x73, 0x49, 0x6e, 0x52, 0x65, 0x63, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
+	0x65, 0x30, 0x01, 0x42, 0x49, 0x5a, 0x35, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f,
+	0x6d, 0x2f, 0x73, 0x74, 0x6e, 0x6f, 0x6b, 0x6f, 0x74, 0x74, 0x2f, 0x73, 0x70, 0x61, 0x63, 0x65,
+	0x74, 0x72, 0x61, 0x64, 0x65, 0x72, 0x2d, 0x73, 0x65, 0x72, 0x76, 0x65, 0x72, 0x2f, 0x69, 0x6e,
+	0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0xaa, 0x02, 0x0f, 0x47,
+	0x72, 0x70, 0x63, 0x53, 0x70, 0x61, 0x63, 0x65, 0x74, 0x72, 0x61, 0x64, 0x65, 0x72, 0x62, 0x06,
+	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -677,49 +840,53 @@ func file_server_proto_rawDescGZIP() []byte {
 	return file_server_proto_rawDescData
 }
 
-var file_server_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_server_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_server_proto_goTypes = []any{
-	(*ServerStatus)(nil),               // 0: proto.ServerStatus
-	(*Agent)(nil),                      // 1: proto.Agent
-	(*Fleet)(nil),                      // 2: proto.Fleet
-	(*GetShipCoordinatesRequest)(nil),  // 3: proto.GetShipCoordinatesRequest
-	(*GetShipCoordinatesResponse)(nil), // 4: proto.GetShipCoordinatesResponse
-	(*Vector)(nil),                     // 5: proto.Vector
-	(*Rect)(nil),                       // 6: proto.Rect
-	(*ServerStatus_GlobalStats)(nil),   // 7: proto.ServerStatus.GlobalStats
-	(*ServerStatus_Announcement)(nil),  // 8: proto.ServerStatus.Announcement
-	(*timestamppb.Timestamp)(nil),      // 9: google.protobuf.Timestamp
-	(Faction)(0),                       // 10: proto.Faction
-	(*Ship)(nil),                       // 11: proto.Ship
-	(*emptypb.Empty)(nil),              // 12: google.protobuf.Empty
-	(*System)(nil),                     // 13: proto.System
+	(*ServerStatus)(nil),                 // 0: proto.ServerStatus
+	(*Agent)(nil),                        // 1: proto.Agent
+	(*Fleet)(nil),                        // 2: proto.Fleet
+	(*GetShipCountInSystemRequest)(nil),  // 3: proto.GetShipCountInSystemRequest
+	(*GetShipCountInSystemResponse)(nil), // 4: proto.GetShipCountInSystemResponse
+	(*GetShipCoordinatesRequest)(nil),    // 5: proto.GetShipCoordinatesRequest
+	(*GetShipCoordinatesResponse)(nil),   // 6: proto.GetShipCoordinatesResponse
+	(*GetSystemsInRectResponse)(nil),     // 7: proto.GetSystemsInRectResponse
+	(*Vector)(nil),                       // 8: proto.Vector
+	(*Rect)(nil),                         // 9: proto.Rect
+	(*ServerStatus_GlobalStats)(nil),     // 10: proto.ServerStatus.GlobalStats
+	(*ServerStatus_Announcement)(nil),    // 11: proto.ServerStatus.Announcement
+	(*timestamppb.Timestamp)(nil),        // 12: google.protobuf.Timestamp
+	(Faction)(0),                         // 13: proto.Faction
+	(*Ship)(nil),                         // 14: proto.Ship
+	(*System)(nil),                       // 15: proto.System
+	(*emptypb.Empty)(nil),                // 16: google.protobuf.Empty
 }
 var file_server_proto_depIdxs = []int32{
-	9,  // 0: proto.ServerStatus.last_reset:type_name -> google.protobuf.Timestamp
-	9,  // 1: proto.ServerStatus.next_reset:type_name -> google.protobuf.Timestamp
-	7,  // 2: proto.ServerStatus.global_stats:type_name -> proto.ServerStatus.GlobalStats
-	8,  // 3: proto.ServerStatus.announcements:type_name -> proto.ServerStatus.Announcement
-	10, // 4: proto.Agent.startingFaction:type_name -> proto.Faction
-	11, // 5: proto.Fleet.ships:type_name -> proto.Ship
-	5,  // 6: proto.Rect.start:type_name -> proto.Vector
-	5,  // 7: proto.Rect.end:type_name -> proto.Vector
-	12, // 8: proto.Spacetrader.Ping:input_type -> google.protobuf.Empty
-	12, // 9: proto.Spacetrader.GetServerStatus:input_type -> google.protobuf.Empty
-	12, // 10: proto.Spacetrader.GetCurrentAgent:input_type -> google.protobuf.Empty
-	12, // 11: proto.Spacetrader.GetFleet:input_type -> google.protobuf.Empty
-	3,  // 12: proto.Spacetrader.GetShipCoordinates:input_type -> proto.GetShipCoordinatesRequest
-	6,  // 13: proto.Spacetrader.GetSystemsInRect:input_type -> proto.Rect
-	12, // 14: proto.Spacetrader.Ping:output_type -> google.protobuf.Empty
-	0,  // 15: proto.Spacetrader.GetServerStatus:output_type -> proto.ServerStatus
-	1,  // 16: proto.Spacetrader.GetCurrentAgent:output_type -> proto.Agent
-	2,  // 17: proto.Spacetrader.GetFleet:output_type -> proto.Fleet
-	4,  // 18: proto.Spacetrader.GetShipCoordinates:output_type -> proto.GetShipCoordinatesResponse
-	13, // 19: proto.Spacetrader.GetSystemsInRect:output_type -> proto.System
-	14, // [14:20] is the sub-list for method output_type
-	8,  // [8:14] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	12, // 0: proto.ServerStatus.last_reset:type_name -> google.protobuf.Timestamp
+	12, // 1: proto.ServerStatus.next_reset:type_name -> google.protobuf.Timestamp
+	10, // 2: proto.ServerStatus.global_stats:type_name -> proto.ServerStatus.GlobalStats
+	11, // 3: proto.ServerStatus.announcements:type_name -> proto.ServerStatus.Announcement
+	13, // 4: proto.Agent.startingFaction:type_name -> proto.Faction
+	14, // 5: proto.Fleet.ships:type_name -> proto.Ship
+	15, // 6: proto.GetSystemsInRectResponse.system:type_name -> proto.System
+	8,  // 7: proto.Rect.start:type_name -> proto.Vector
+	8,  // 8: proto.Rect.end:type_name -> proto.Vector
+	16, // 9: proto.Spacetrader.Ping:input_type -> google.protobuf.Empty
+	16, // 10: proto.Spacetrader.GetServerStatus:input_type -> google.protobuf.Empty
+	16, // 11: proto.Spacetrader.GetCurrentAgent:input_type -> google.protobuf.Empty
+	16, // 12: proto.Spacetrader.GetFleet:input_type -> google.protobuf.Empty
+	5,  // 13: proto.Spacetrader.GetShipCoordinates:input_type -> proto.GetShipCoordinatesRequest
+	9,  // 14: proto.Spacetrader.GetSystemsInRect:input_type -> proto.Rect
+	16, // 15: proto.Spacetrader.Ping:output_type -> google.protobuf.Empty
+	0,  // 16: proto.Spacetrader.GetServerStatus:output_type -> proto.ServerStatus
+	1,  // 17: proto.Spacetrader.GetCurrentAgent:output_type -> proto.Agent
+	2,  // 18: proto.Spacetrader.GetFleet:output_type -> proto.Fleet
+	6,  // 19: proto.Spacetrader.GetShipCoordinates:output_type -> proto.GetShipCoordinatesResponse
+	7,  // 20: proto.Spacetrader.GetSystemsInRect:output_type -> proto.GetSystemsInRectResponse
+	15, // [15:21] is the sub-list for method output_type
+	9,  // [9:15] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_server_proto_init() }
@@ -767,7 +934,7 @@ func file_server_proto_init() {
 			}
 		}
 		file_server_proto_msgTypes[3].Exporter = func(v any, i int) any {
-			switch v := v.(*GetShipCoordinatesRequest); i {
+			switch v := v.(*GetShipCountInSystemRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -779,7 +946,7 @@ func file_server_proto_init() {
 			}
 		}
 		file_server_proto_msgTypes[4].Exporter = func(v any, i int) any {
-			switch v := v.(*GetShipCoordinatesResponse); i {
+			switch v := v.(*GetShipCountInSystemResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -791,7 +958,7 @@ func file_server_proto_init() {
 			}
 		}
 		file_server_proto_msgTypes[5].Exporter = func(v any, i int) any {
-			switch v := v.(*Vector); i {
+			switch v := v.(*GetShipCoordinatesRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -803,7 +970,7 @@ func file_server_proto_init() {
 			}
 		}
 		file_server_proto_msgTypes[6].Exporter = func(v any, i int) any {
-			switch v := v.(*Rect); i {
+			switch v := v.(*GetShipCoordinatesResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -815,7 +982,7 @@ func file_server_proto_init() {
 			}
 		}
 		file_server_proto_msgTypes[7].Exporter = func(v any, i int) any {
-			switch v := v.(*ServerStatus_GlobalStats); i {
+			switch v := v.(*GetSystemsInRectResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -827,6 +994,42 @@ func file_server_proto_init() {
 			}
 		}
 		file_server_proto_msgTypes[8].Exporter = func(v any, i int) any {
+			switch v := v.(*Vector); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_server_proto_msgTypes[9].Exporter = func(v any, i int) any {
+			switch v := v.(*Rect); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_server_proto_msgTypes[10].Exporter = func(v any, i int) any {
+			switch v := v.(*ServerStatus_GlobalStats); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_server_proto_msgTypes[11].Exporter = func(v any, i int) any {
 			switch v := v.(*ServerStatus_Announcement); i {
 			case 0:
 				return &v.state
@@ -845,7 +1048,7 @@ func file_server_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_server_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
