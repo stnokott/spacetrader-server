@@ -21,7 +21,7 @@ func configureRestyClient(r *resty.Client, baseURL string, token string) {
 		SetAuthToken(token).
 		SetHeaders(map[string]string{
 			"Accept":     "application/json",
-			"User-Agent": "github.com/stnokott/spacetrader-servers",
+			"User-Agent": "github.com/stnokott/spacetrader-server",
 		}).
 		SetTimeout(5 * time.Second). // TODO: allow configuring from env
 		SetLogger(log.StandardLogger()).
