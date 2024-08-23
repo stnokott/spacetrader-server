@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/joho/godotenv"
 	log "github.com/sirupsen/logrus"
@@ -10,8 +12,8 @@ import (
 	"github.com/stnokott/spacetrader-server/internal/config"
 )
 
-func BenchmarkIndex(b *testing.B) {
-	log.SetLevel(log.DebugLevel)
+func benchIndex(b *testing.B, getIndexFunc func(*Server) func(context.Context) error) {
+	log.SetLevel(log.InfoLevel)
 
 	_ = godotenv.Load(".env")
 	// load config
@@ -35,8 +37,17 @@ func BenchmarkIndex(b *testing.B) {
 	defer func() {
 		_ = s.Close()
 	}()
+	start := time.Now()
 	b.ResetTimer()
-	if err := s.UpdateSystemIndex(true); err != nil {
+	if err := getIndexFunc(s)(context.Background()); err != nil {
 		b.Fatal(err)
 	}
+	b.StopTimer()
+	b.Logf("duration: %v", time.Now().Sub(start))
+}
+
+func BenchmarkIndex(b *testing.B) {
+	benchIndex(b, func(s *Server) func(context.Context) error {
+		return s.replaceSystems
+	})
 }

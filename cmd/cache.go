@@ -59,21 +59,13 @@ func (s *Server) hasSystems(ctx context.Context) (bool, error) {
 // replaceSystems replaces the contents of the `systems` table with results from the API.
 // It continues reading from systemChan until it is closed or ctx expires.
 func (s *Server) replaceSystems(ctx context.Context) (err error) {
-	log.Info("step 1/2: querying systems from API")
-	var systems []*api.System
-	systems, err = getPaginated[*api.System](
+	systemsIter := getPaginatedIter[*api.System](
 		ctx,
 		s,
 		func(page int) (urlPath string) {
 			return fmt.Sprintf("/systems?page=%d&limit=20", page)
 		},
 	)
-	if err != nil {
-		err = fmt.Errorf("querying systems: %w", err)
-		return
-	}
-
-	log.Infof("step 2/2: inserting %d systems into DB", len(systems))
 
 	tx, err := query.WithTx(ctx, s.db, s.query)
 	if err != nil {
@@ -91,34 +83,47 @@ func (s *Server) replaceSystems(ctx context.Context) (err error) {
 
 	defer func() {
 		if err == nil {
-			log.WithField("n", len(systems)).Info("system index replaced")
+			log.Info("system index replaced")
 		}
 	}()
 
-	for i, system := range systems {
+	for systemPage, errPage := range systemsIter {
+		if errPage != nil {
+			err = fmt.Errorf("querying systems: %w", errPage)
+			return
+		}
 		select {
 		case <-ctx.Done():
-			err = fmt.Errorf("context exceeded after %d systems processed", i)
+			err = ctx.Err()
 			return
 		default:
 		}
+		if err = insertSystemPage(ctx, tx, systemPage); err != nil {
+			return
+		}
+	}
+	return
+}
+
+func insertSystemPage(ctx context.Context, tx query.Tx, page []*api.System) error {
+	for _, system := range page {
 		factions := make([]string, len(system.Factions))
-		for j, fac := range system.Factions {
-			factions[j] = string(fac.Symbol)
+		for i, fac := range system.Factions {
+			factions[i] = string(fac.Symbol)
 		}
 
-		if err = tx.InsertSystem(ctx, query.InsertSystemParams{
+		if err := tx.InsertSystem(ctx, query.InsertSystemParams{
 			Symbol:   system.Symbol,
 			X:        int64(system.X),
 			Y:        int64(system.Y),
 			Type:     string(system.Type),
 			Factions: strings.Join(factions, ","),
 		}); err != nil {
-			err = fmt.Errorf("inserting system '%s': %v", system.Symbol, err)
-			return
+			return fmt.Errorf("inserting system '%s': %v", system.Symbol, err)
 		}
 	}
-	return
+
+	return nil
 }
 
 // GetFleet returns the complete list of ships in the agent's posession.

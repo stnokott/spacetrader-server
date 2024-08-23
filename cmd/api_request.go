@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"iter"
 	"net/http"
 	"time"
 
@@ -111,47 +112,44 @@ func expectStatus(resp *resty.Response, expectedStatus int) error {
 
 type pageFunc func(page int) (urlPath string)
 
-// getPaginated traverses all pages of a paginated endpoint and returns the
-// resulting items as a slice.
+// getPaginated returns an iterator, traversing all pages of a paginated endpoint.
+// Each iteration yields one page of data.
 //
 // Pass a function pageFn which assembles the URL path (without the base URL) depending on
 // the current page.
+//
+// You should stop iterating when an error is yielded.
 func getPaginated[T any](
 	ctx context.Context,
 	s *Server,
 	pageFn pageFunc,
-) ([]T, error) {
-	var items []T
-
+) iter.Seq2[[]T, error] {
 	// total expected number of items
 	total := 1 // start with total > 0 to enter the first loop iteration
 	// total number of items received
 	n := 0
-	for page := 1; n < total; page++ {
-		urlPath := pageFn(page)
 
-		result := new(struct {
-			Data []T       `json:"data"`
-			Meta *api.Meta `json:"meta"`
-		})
-		if err := s.get(ctx, result, urlPath, 200); err != nil {
-			return nil, err
-		}
+	return func(yield func([]T, error) bool) {
+		for page := 1; n < total; page++ {
+			urlPath := pageFn(page)
 
-		// update the expected total item number
-		total = result.Meta.Total
-		// pre-allocate once we know the total size (i.e. after querying page 1)
-		if items == nil {
-			items = make([]T, total)
-		}
+			result := new(struct {
+				Data []T       `json:"data"`
+				Meta *api.Meta `json:"meta"`
+			})
+			if err := s.get(ctx, result, urlPath, 200); err != nil {
+				_ = yield(nil, err)
+				return
+			}
 
-		for _, item := range result.Data {
-			items[n] = item
-			// update the actual received item count so far
-			n++
+			// update the expected total item number
+			total = result.Meta.Total
+
+			if !yield(result.Data, nil) {
+				return
+			}
+			n += len(result.Data)
+			log.Debugf("queried %03.0f%% (%d/%d) of type %T", float64(n)/float64(total)*100, n, total, *new(T))
 		}
-		log.Debugf("queried %03.0f%% (%d/%d) of type %T", float64(n)/float64(total)*100, n, total, *new(T))
 	}
-
-	return items, nil
 }
