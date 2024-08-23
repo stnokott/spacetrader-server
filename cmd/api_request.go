@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -23,16 +25,30 @@ func configureRestyClient(r *resty.Client, baseURL string, token string) {
 		}).
 		SetTimeout(5 * time.Second). // TODO: allow configuring from env
 		SetLogger(log.StandardLogger()).
-		SetRetryAfter(func(_ *resty.Client, _ *resty.Response) (time.Duration, error) {
-			return 5 * time.Second, nil
-		}).
+		SetRetryAfter(retryAfter).
 		SetRetryCount(3).
+		AddRetryCondition(func(r *resty.Response, _ error) bool {
+			return r.StatusCode() == http.StatusTooManyRequests
+		}).
 		OnBeforeRequest(beforeRequest())
 }
 
-func newRateLimiter() ratelimit.Limiter {
-	// we want to be a little generous, the actual rate limit is 2 rps.
-	return ratelimit.New(1)
+// retryAfter handles 429 rate-limiting responses and configures the wait time accordingly.
+func retryAfter(_ *resty.Client, resp *resty.Response) (time.Duration, error) {
+	if resp.StatusCode() == 429 {
+		rateReset := resp.Header().Get("x-ratelimit-reset")
+		if rateReset == "" {
+			return 0, errors.New("got HTTP 429 without x-ratelimit-reset header")
+		}
+		t, err := time.Parse(time.RFC3339, rateReset)
+		if err != nil {
+			return 0, fmt.Errorf("parsing x-ratelimit-reset value: %w", err)
+		}
+		wait := t.Sub(time.Now().UTC())
+		log.WithField("wait", wait).Debug("ratelimit exceeded")
+		return wait, nil
+	}
+	return 5 * time.Second, nil
 }
 
 // beforeRequest prints the HTTP method, base URL and URL path for the current request before executing it.
@@ -43,6 +59,11 @@ func beforeRequest() func(*resty.Client, *resty.Request) error {
 		log.WithField("baseURL", c.BaseURL).Debugf("%s %s", r.Method, r.URL)
 		return nil
 	}
+}
+
+func newRateLimiter() ratelimit.Limiter {
+	// 2 requests per second, according to https://docs.spacetraders.io/api-guide/rate-limits
+	return ratelimit.New(2, ratelimit.Per(1*time.Second))
 }
 
 // get is a generic utility function for reducing boilerplate client code.
