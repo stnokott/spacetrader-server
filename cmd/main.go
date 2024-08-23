@@ -35,7 +35,7 @@ func main() {
 	// load config
 	cfg, err := config.Load()
 	if err != nil {
-		log.Error(cfg)
+		log.Error(err)
 		return
 	}
 
