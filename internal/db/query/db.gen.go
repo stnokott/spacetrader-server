@@ -30,14 +30,11 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getSystemsInRectStmt, err = db.PrepareContext(ctx, getSystemsInRect); err != nil {
 		return nil, fmt.Errorf("error preparing query GetSystemsInRect: %w", err)
 	}
-	if q.insertShipStmt, err = db.PrepareContext(ctx, insertShip); err != nil {
-		return nil, fmt.Errorf("error preparing query InsertShip: %w", err)
+	if q.hasSystemsRowsStmt, err = db.PrepareContext(ctx, hasSystemsRows); err != nil {
+		return nil, fmt.Errorf("error preparing query HasSystemsRows: %w", err)
 	}
 	if q.insertSystemStmt, err = db.PrepareContext(ctx, insertSystem); err != nil {
 		return nil, fmt.Errorf("error preparing query InsertSystem: %w", err)
-	}
-	if q.truncateShipsStmt, err = db.PrepareContext(ctx, truncateShips); err != nil {
-		return nil, fmt.Errorf("error preparing query TruncateShips: %w", err)
 	}
 	if q.truncateSystemsStmt, err = db.PrepareContext(ctx, truncateSystems); err != nil {
 		return nil, fmt.Errorf("error preparing query TruncateSystems: %w", err)
@@ -57,19 +54,14 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getSystemsInRectStmt: %w", cerr)
 		}
 	}
-	if q.insertShipStmt != nil {
-		if cerr := q.insertShipStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing insertShipStmt: %w", cerr)
+	if q.hasSystemsRowsStmt != nil {
+		if cerr := q.hasSystemsRowsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing hasSystemsRowsStmt: %w", cerr)
 		}
 	}
 	if q.insertSystemStmt != nil {
 		if cerr := q.insertSystemStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing insertSystemStmt: %w", cerr)
-		}
-	}
-	if q.truncateShipsStmt != nil {
-		if cerr := q.truncateShipsStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing truncateShipsStmt: %w", cerr)
 		}
 	}
 	if q.truncateSystemsStmt != nil {
@@ -118,9 +110,8 @@ type Queries struct {
 	tx                   *sql.Tx
 	getSystemByNameStmt  *sql.Stmt
 	getSystemsInRectStmt *sql.Stmt
-	insertShipStmt       *sql.Stmt
+	hasSystemsRowsStmt   *sql.Stmt
 	insertSystemStmt     *sql.Stmt
-	truncateShipsStmt    *sql.Stmt
 	truncateSystemsStmt  *sql.Stmt
 }
 
@@ -130,9 +121,8 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		tx:                   tx,
 		getSystemByNameStmt:  q.getSystemByNameStmt,
 		getSystemsInRectStmt: q.getSystemsInRectStmt,
-		insertShipStmt:       q.insertShipStmt,
+		hasSystemsRowsStmt:   q.hasSystemsRowsStmt,
 		insertSystemStmt:     q.insertSystemStmt,
-		truncateShipsStmt:    q.truncateShipsStmt,
 		truncateSystemsStmt:  q.truncateSystemsStmt,
 	}
 }

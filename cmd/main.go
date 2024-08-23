@@ -2,6 +2,7 @@
 package main
 
 import (
+	"context"
 	"os"
 
 	log "github.com/sirupsen/logrus"
@@ -49,7 +50,7 @@ func main() {
 		_ = s.Close()
 	}()
 	// TODO: update in background, return ETA if queried
-	if err := s.UpdateSystemIndex(false); err != nil {
+	if err := s.CreateIndexes(context.Background()); err != nil {
 		log.Error(err)
 		return
 	}

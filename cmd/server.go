@@ -26,6 +26,9 @@ type Server struct {
 	db    *sql.DB
 	query *query.Queries
 
+	systemCache Cache
+	fleetCache  *FleetCache
+
 	pb.UnimplementedSpacetraderServer
 }
 
@@ -50,6 +53,9 @@ func New(baseURL string, token string, dbFile string) (*Server, error) {
 		api:   r,
 		db:    db,
 		query: q,
+
+		systemCache: NewSystemCache(),
+		fleetCache:  &FleetCache{},
 	}, nil
 }
 
@@ -123,4 +129,72 @@ func (s *Server) GetCurrentAgent(ctx context.Context, _ *emptypb.Empty) (*pb.Age
 	}
 
 	return convert.ConvertAgent(result.Data)
+}
+
+// GetFleet returns the complete list of ships in the agent's posession.
+func (s *Server) GetFleet(_ context.Context, _ *emptypb.Empty) (*pb.Fleet, error) {
+	if s.fleetCache.ships == nil {
+		return nil, errors.New("fleet cache has not been initialized")
+	}
+	return &pb.Fleet{
+		Ships: s.fleetCache.ships,
+	}, nil
+}
+
+// GetShipCoordinates returns the x and y coordinates for a ship, identified by its name
+func (s *Server) GetShipCoordinates(ctx context.Context, req *pb.GetShipCoordinatesRequest) (*pb.GetShipCoordinatesResponse, error) {
+	ship, err := s.fleetCache.ShipByName(req.ShipName)
+	if err != nil {
+		return nil, err
+	}
+	system, err := s.query.GetSystemByName(ctx, ship.CurrentLocation.System)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.GetShipCoordinatesResponse{
+		X: int32(system.X), Y: int32(system.Y),
+	}, nil
+}
+
+// GetSystemsInRect streams all systems whose coordinates fall into rect.
+func (s *Server) GetSystemsInRect(rect *pb.Rect, stream pb.Spacetrader_GetSystemsInRectServer) error {
+	ctx, cancel := context.WithTimeout(stream.Context(), 5*time.Second)
+	defer cancel()
+
+	rows, err := s.query.GetSystemsInRect(ctx, query.GetSystemsInRectParams{
+		XMin: int64(rect.Start.X),
+		YMin: int64(rect.Start.Y),
+		XMax: int64(rect.End.X),
+		YMax: int64(rect.End.Y),
+	})
+	if err != nil {
+		return fmt.Errorf("querying systems within rect: %w", err)
+	}
+
+	shipMap := s.shipsPerSystem()
+
+	for _, row := range rows {
+		system, err := convert.ConvertSystem(&row)
+		if err != nil {
+			return err
+		}
+		shipCount := shipMap[system.Id]
+
+		if err = stream.Send(&pb.GetSystemsInRectResponse{
+			System:    system,
+			ShipCount: int32(shipCount),
+		}); err != nil {
+			return fmt.Errorf("sending system via gRPC: %w", err)
+		}
+	}
+	return nil
+}
+
+func (s *Server) shipsPerSystem() map[string]int {
+	m := map[string]int{}
+
+	for _, ship := range s.fleetCache.ships {
+		m[ship.CurrentLocation.System]++
+	}
+	return m
 }

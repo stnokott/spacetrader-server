@@ -10,6 +10,8 @@ import (
 )
 
 const getSystemByName = `-- name: GetSystemByName :one
+;
+
 SELECT x, y FROM systems
 WHERE symbol = ?1
 `
@@ -28,14 +30,11 @@ func (q *Queries) GetSystemByName(ctx context.Context, systemName string) (GetSy
 
 const getSystemsInRect = `-- name: GetSystemsInRect :many
 SELECT
-	systems.symbol, systems.x, systems.y, systems.type, systems.factions, COUNT(ships.symbol) AS ship_count
+	symbol, x, y, type, factions
 FROM systems
-LEFT JOIN ships
-	ON ships.current_system = systems.symbol
 WHERE TRUE
 	AND x >= ?1 AND x <= ?2
 	AND y >= ?3 AND y <= ?4
-GROUP BY systems.symbol, x, y, type, factions
 `
 
 type GetSystemsInRectParams struct {
@@ -45,12 +44,7 @@ type GetSystemsInRectParams struct {
 	YMax int64
 }
 
-type GetSystemsInRectRow struct {
-	System    System
-	ShipCount int64
-}
-
-func (q *Queries) GetSystemsInRect(ctx context.Context, arg GetSystemsInRectParams) ([]GetSystemsInRectRow, error) {
+func (q *Queries) GetSystemsInRect(ctx context.Context, arg GetSystemsInRectParams) ([]System, error) {
 	rows, err := q.query(ctx, q.getSystemsInRectStmt, getSystemsInRect,
 		arg.XMin,
 		arg.XMax,
@@ -61,16 +55,15 @@ func (q *Queries) GetSystemsInRect(ctx context.Context, arg GetSystemsInRectPara
 		return nil, err
 	}
 	defer rows.Close()
-	items := []GetSystemsInRectRow{}
+	items := []System{}
 	for rows.Next() {
-		var i GetSystemsInRectRow
+		var i System
 		if err := rows.Scan(
-			&i.System.Symbol,
-			&i.System.X,
-			&i.System.Y,
-			&i.System.Type,
-			&i.System.Factions,
-			&i.ShipCount,
+			&i.Symbol,
+			&i.X,
+			&i.Y,
+			&i.Type,
+			&i.Factions,
 		); err != nil {
 			return nil, err
 		}
@@ -83,6 +76,17 @@ func (q *Queries) GetSystemsInRect(ctx context.Context, arg GetSystemsInRectPara
 		return nil, err
 	}
 	return items, nil
+}
+
+const hasSystemsRows = `-- name: HasSystemsRows :one
+SELECT EXISTS (SELECT 1 FROM systems) AS "exists"
+`
+
+func (q *Queries) HasSystemsRows(ctx context.Context) (int64, error) {
+	row := q.queryRow(ctx, q.hasSystemsRowsStmt, hasSystemsRows)
+	var exists int64
+	err := row.Scan(&exists)
+	return exists, err
 }
 
 const insertSystem = `-- name: InsertSystem :exec
@@ -113,8 +117,6 @@ func (q *Queries) InsertSystem(ctx context.Context, arg InsertSystemParams) erro
 }
 
 const truncateSystems = `-- name: TruncateSystems :exec
-;
-
 DELETE FROM systems
 `
 

@@ -153,3 +153,17 @@ func getPaginated[T any](
 		}
 	}
 }
+
+// collectPages combines all pages of an iterator into one slice, returning any error encountered on any page.
+func collectPages[V any](seq iter.Seq2[[]V, error]) ([]V, error) {
+	out := []V{}
+	for page, err := range seq {
+		if err != nil {
+			return nil, err
+		}
+		for _, item := range page {
+			out = append(out, item)
+		}
+	}
+	return out, nil
+}

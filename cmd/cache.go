@@ -2,12 +2,12 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/stnokott/spacetrader-server/internal/api"
 	"github.com/stnokott/spacetrader-server/internal/convert"
@@ -15,94 +15,119 @@ import (
 	pb "github.com/stnokott/spacetrader-server/internal/proto"
 )
 
-var buildSystemIndexTimeout = 20 * time.Minute
+// Cache stores API-related data locally for faster access.
+type Cache interface {
+	// Exists returns false if the cache has not been created and otherwise false.
+	Exists(ctx context.Context, srv *Server) (bool, error)
+	// Update creates/refreshes the cache.
+	Update(ctx context.Context, srv *Server) error
+}
 
-// UpdateSystemIndex queries all systems from the API and writes them to the DB.
-// This index can be used later to query systems quickly without relying on the API.
-// This approach is valid since systems are expected to be static.
-//
-// This function is blocking.
-func (s *Server) UpdateSystemIndex(force bool) error {
-	log.WithField("timeout", buildSystemIndexTimeout).Info("building system index")
+var indexTimeout = 5 * time.Minute
 
-	ctx, cancel := context.WithTimeout(context.Background(), buildSystemIndexTimeout)
+// CreateIndexes updates or creates all registered indexes.
+// It should be called once at the beginning of the program loop.
+func (s *Server) CreateIndexes(ctxParent context.Context) (err error) {
+	ctx, cancel := context.WithTimeout(ctxParent, indexTimeout)
 	defer cancel()
 
-	if !force {
-		hasIndex, err := s.hasSystems(ctx)
+	log.Info("updating indexes")
+
+	var exists bool
+	caches := map[string]Cache{
+		"Systems": s.systemCache,
+		"Fleet":   s.fleetCache,
+	}
+	for name, cache := range caches {
+		exists, err = cache.Exists(ctx, s)
 		if err != nil {
-			return fmt.Errorf("checking for system index: %w", err)
+			return
 		}
-		if hasIndex {
-			log.Info("system index exists, skipping refresh")
-			return nil
+		if exists {
+			log.WithField("cache_name", name).Debug("cache already initialized")
+			continue
 		}
-	} else {
-		log.Info("forcing system index refresh")
+		log.WithField("cache_name", name).Debug("cache requires initialization")
+		if err = cache.Update(ctx, s); err != nil {
+			return
+		}
 	}
-
-	return s.replaceSystems(ctx)
+	return
 }
 
-// hasSystems returns true if the systems table has at least one row, indicating
-// an existing Systems index.
-func (s *Server) hasSystems(ctx context.Context) (bool, error) {
-	result, err := s.db.QueryContext(ctx, "SELECT 1 FROM systems LIMIT 1")
+// DBCache implements the Cache interface.
+// It provides wrappers around database-related operations, like transactions.
+type DBCache struct {
+	existsFunc func(ctx context.Context, q *query.Queries) (bool, error)
+	updateFunc func(ctx context.Context, srv *Server, tx query.Tx) error
+}
+
+var _ Cache = (*DBCache)(nil)
+
+// NewDBCache creates a new DBCache, implementing the Cache interface.
+func NewDBCache(
+	existsFunc func(ctx context.Context, q *query.Queries) (bool, error),
+	updateFunc func(ctx context.Context, srv *Server, tx query.Tx) error,
+) Cache {
+	return &DBCache{
+		existsFunc: existsFunc,
+		updateFunc: updateFunc,
+	}
+}
+
+// Exists implements Cache.
+func (c *DBCache) Exists(ctx context.Context, srv *Server) (bool, error) {
+	return c.existsFunc(ctx, srv.query)
+}
+
+// Update implements Cache.
+func (c *DBCache) Update(ctx context.Context, srv *Server) error {
+	tx, err := query.WithTx(ctx, srv.db, srv.query)
 	if err != nil {
-		return false, err
+		return err
 	}
-	hasNext := result.Next()
-	_ = result.Close()
-	return hasNext, nil
+	err = c.updateFunc(ctx, srv, tx)
+	return errors.Join(err, tx.Done(err))
 }
 
-// replaceSystems replaces the contents of the `systems` table with results from the API.
+// NewSystemCache creates a new cache for systems.
+func NewSystemCache() Cache {
+	return NewDBCache(systemCacheExists, updateSystemCache)
+}
+
+// systemCacheExists returns true if the systems table has at least one row, indicating
+// an existing Systems index.
+func systemCacheExists(ctx context.Context, q *query.Queries) (bool, error) {
+	v, err := q.HasSystemsRows(ctx)
+	return v != 0, err
+}
+
+// updateSystemCache replaces the contents of the `systems` table with results from the API.
 // It continues reading from systemChan until it is closed or ctx expires.
-func (s *Server) replaceSystems(ctx context.Context) (err error) {
-	systemsIter := getPaginatedIter[*api.System](
+func updateSystemCache(ctx context.Context, srv *Server, tx query.Tx) error {
+	systemsIter := getPaginated[*api.System](
 		ctx,
-		s,
+		srv,
 		func(page int) (urlPath string) {
 			return fmt.Sprintf("/systems?page=%d&limit=20", page)
 		},
 	)
 
-	tx, err := query.WithTx(ctx, s.db, s.query)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		err = tx.Done(err)
-	}()
-
 	// delete existing index
 	log.Debug("clearing existing system index")
-	if err = tx.TruncateSystems(ctx); err != nil {
-		return
+	if err := tx.TruncateSystems(ctx); err != nil {
+		return fmt.Errorf("truncating systems index: %w", err)
 	}
-
-	defer func() {
-		if err == nil {
-			log.Info("system index replaced")
-		}
-	}()
 
 	for systemPage, errPage := range systemsIter {
 		if errPage != nil {
-			err = fmt.Errorf("querying systems: %w", errPage)
-			return
+			return fmt.Errorf("querying systems: %w", errPage)
 		}
-		select {
-		case <-ctx.Done():
-			err = ctx.Err()
-			return
-		default:
-		}
-		if err = insertSystemPage(ctx, tx, systemPage); err != nil {
-			return
+		if err := insertSystemPage(ctx, tx, systemPage); err != nil {
+			return err
 		}
 	}
-	return
+	return nil
 }
 
 func insertSystemPage(ctx context.Context, tx query.Tx, page []*api.System) error {
@@ -112,6 +137,7 @@ func insertSystemPage(ctx context.Context, tx query.Tx, page []*api.System) erro
 			factions[i] = string(fac.Symbol)
 		}
 
+		// TODO: use converter
 		if err := tx.InsertSystem(ctx, query.InsertSystemParams{
 			Symbol:   system.Symbol,
 			X:        int64(system.X),
@@ -126,101 +152,51 @@ func insertSystemPage(ctx context.Context, tx query.Tx, page []*api.System) erro
 	return nil
 }
 
-// GetFleet returns the complete list of ships in the agent's posession.
-func (s *Server) GetFleet(ctx context.Context, _ *emptypb.Empty) (fleet *pb.Fleet, err error) {
-	var ships []*api.Ship
-	ships, err = getPaginated[*api.Ship](
+// FleetCache is an in-memory cache of all player-owned ships.
+type FleetCache struct {
+	ships []*pb.Ship
+}
+
+var _ Cache = (*FleetCache)(nil)
+
+// Exists implements Cache.
+func (c *FleetCache) Exists(_ context.Context, _ *Server) (bool, error) {
+	return c.ships != nil, nil
+}
+
+// Update implements Cache.
+func (c *FleetCache) Update(ctx context.Context, srv *Server) error {
+	shipsIter := getPaginated[*api.Ship](
 		ctx,
-		s,
+		srv,
 		func(page int) (urlPath string) {
 			return fmt.Sprintf("/my/ships?page=%d&limit=20", page)
 		},
 	)
+
+	ships, err := collectPages(shipsIter)
 	if err != nil {
-		return nil, fmt.Errorf("querying ships: %w", err)
+		return fmt.Errorf("querying ships: %w", err)
 	}
 
 	converted := make([]*pb.Ship, len(ships))
-
-	tx, err := query.WithTx(ctx, s.db, s.query)
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		err = tx.Done(err)
-	}()
-
-	if err = tx.TruncateShips(ctx); err != nil {
-		return nil, fmt.Errorf("truncating ships table: %w", err)
-	}
-
 	for i, ship := range ships {
-		if err := tx.InsertShip(ctx, query.InsertShipParams{
-			Symbol:          ship.Symbol,
-			CurrentSystem:   ship.Nav.SystemSymbol,
-			CurrentWaypoint: ship.Nav.WaypointSymbol,
-		}); err != nil {
-			return nil, fmt.Errorf("inserting ship into DB: %w", err)
-		}
-
 		if converted[i], err = convert.ConvertShip(ship); err != nil {
-			return nil, fmt.Errorf("converting ship: %w", err)
+			return fmt.Errorf("converting ship: %w", err)
 		}
 	}
-
-	fleet = &pb.Fleet{Ships: converted}
-	return
-}
-
-// GetShipCoordinates returns the x and y coordinates for a ship, identified by its name
-func (s *Server) GetShipCoordinates(ctx context.Context, req *pb.GetShipCoordinatesRequest) (*pb.GetShipCoordinatesResponse, error) {
-	result := new(struct {
-		Ship *api.Ship `json:"data"`
-	})
-	if err := s.get(ctx, result, "/my/ships/"+req.ShipName, 200); err != nil {
-		return nil, err
-	}
-
-	if result.Ship == nil {
-		return nil, fmt.Errorf("no ship '%s' found in fleet", req.ShipName)
-	}
-	systemName := result.Ship.Nav.SystemSymbol
-	system, err := s.query.GetSystemByName(ctx, systemName)
-	if err != nil {
-		return nil, err
-	}
-	return &pb.GetShipCoordinatesResponse{
-		X: int32(system.X), Y: int32(system.Y),
-	}, nil
-}
-
-// GetSystemsInRect streams all systems whose coordinates fall into rect.
-func (s *Server) GetSystemsInRect(rect *pb.Rect, stream pb.Spacetrader_GetSystemsInRectServer) error {
-	ctx, cancel := context.WithTimeout(stream.Context(), 5*time.Second)
-	defer cancel()
-
-	rows, err := s.query.GetSystemsInRect(ctx, query.GetSystemsInRectParams{
-		XMin: int64(rect.Start.X),
-		YMin: int64(rect.Start.Y),
-		XMax: int64(rect.End.X),
-		YMax: int64(rect.End.Y),
-	})
-	if err != nil {
-		return fmt.Errorf("querying systems within rect: %w", err)
-	}
-
-	for _, row := range rows {
-		system, err := convert.ConvertSystem(&row.System)
-		if err != nil {
-			return err
-		}
-
-		if err = stream.Send(&pb.GetSystemsInRectResponse{
-			System:    system,
-			ShipCount: int32(row.ShipCount),
-		}); err != nil {
-			return fmt.Errorf("sending system via gRPC: %w", err)
-		}
-	}
+	c.ships = converted
 	return nil
+}
+
+// ShipByName returns a ship from the cache by its name.
+//
+// An error is returned when no ship with that name is found.
+func (c *FleetCache) ShipByName(name string) (*pb.Ship, error) {
+	for _, ship := range c.ships {
+		if ship.Id == name {
+			return ship, nil
+		}
+	}
+	return nil, fmt.Errorf("no ship with name '%s' found", name)
 }

@@ -48,6 +48,6 @@ func benchIndex(b *testing.B, getIndexFunc func(*Server) func(context.Context) e
 
 func BenchmarkIndex(b *testing.B) {
 	benchIndex(b, func(s *Server) func(context.Context) error {
-		return s.replaceSystems
+		return s.CreateIndexes
 	})
 }
