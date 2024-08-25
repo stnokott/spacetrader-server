@@ -11,3 +11,12 @@ type System struct {
 	Type     string
 	Factions string
 }
+
+type Waypoint struct {
+	Symbol string
+	System string
+	Orbits interface{}
+	X      int64
+	Y      int64
+	Type   string
+}

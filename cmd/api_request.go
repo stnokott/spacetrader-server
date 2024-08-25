@@ -24,10 +24,10 @@ func configureRestyClient(r *resty.Client, baseURL string, token string) {
 			"Accept":     "application/json",
 			"User-Agent": "github.com/stnokott/spacetrader-server",
 		}).
-		SetTimeout(5 * time.Second). // TODO: allow configuring from env
+		SetTimeout(10 * time.Second). // TODO: allow configuring from env
 		SetLogger(log.StandardLogger()).
 		SetRetryAfter(retryAfter).
-		SetRetryCount(3).
+		SetRetryCount(5).
 		AddRetryCondition(func(r *resty.Response, _ error) bool {
 			return r.StatusCode() == http.StatusTooManyRequests
 		}).
@@ -144,6 +144,9 @@ func getPaginated[T any](
 
 			// update the expected total item number
 			total = result.Meta.Total
+			if total == 0 {
+				return
+			}
 
 			if !yield(result.Data, nil) {
 				return

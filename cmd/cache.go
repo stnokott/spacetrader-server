@@ -16,7 +16,11 @@ import (
 	pb "github.com/stnokott/spacetrader-server/internal/proto"
 )
 
-var indexTimeout = 5 * time.Minute
+// TODO: for waypoint cache, implement on-demand caching:
+// perform waypoint caching in the background, slowly traversing all known systems
+// when a waypoint is queried that is not cached yet, prioritize that waypoin
+
+var indexTimeout = 3 * time.Hour
 
 // CreateCaches updates or creates all registered indexes.
 // It should be called once at the beginning of the program loop.
@@ -45,7 +49,7 @@ func (s *Server) CreateCaches(ctxParent context.Context) (err error) {
 // SystemCache is a cache for galaxy systems.
 type SystemCache struct{}
 
-func (SystemCache) createWithTx(ctx context.Context, srv *Server, tx query.Tx) error {
+func (c SystemCache) createWithTx(ctx context.Context, srv *Server, tx query.Tx) error {
 	systemsIter := getPaginated[*api.System](
 		ctx,
 		srv,
@@ -55,17 +59,78 @@ func (SystemCache) createWithTx(ctx context.Context, srv *Server, tx query.Tx) e
 	)
 
 	// delete existing index
-	log.Debug("clearing existing system index")
-	if err := tx.TruncateSystems(ctx); err != nil {
-		return fmt.Errorf("truncating systems index: %w", err)
+	log.Debug("clearing existing system/waypoint index")
+	if err := errors.Join(tx.TruncateSystems(ctx), tx.TruncateSystems(ctx)); err != nil {
+		return fmt.Errorf("truncating system/waypoint index: %w", err)
 	}
 
 	for systemPage, errPage := range systemsIter {
 		if errPage != nil {
 			return fmt.Errorf("querying systems: %w", errPage)
 		}
-		if err := insertSystemPage(ctx, tx, systemPage); err != nil {
+		if err := c.insertSystemPage(ctx, srv, tx, systemPage); err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+func (c SystemCache) insertSystemPage(ctx context.Context, srv *Server, tx query.Tx, page []*api.System) error {
+	for _, system := range page {
+		factions := make([]string, len(system.Factions))
+		for i, fac := range system.Factions {
+			factions[i] = string(fac.Symbol)
+		}
+
+		// TODO: use converter
+		if err := tx.InsertSystem(ctx, query.InsertSystemParams{
+			Symbol:   system.Symbol,
+			X:        int64(system.X),
+			Y:        int64(system.Y),
+			Type:     string(system.Type),
+			Factions: strings.Join(factions, ","),
+		}); err != nil {
+			return fmt.Errorf("inserting system '%s': %w", system.Symbol, err)
+		}
+
+		if err := c.createWaypointsForSystem(ctx, system.Symbol, srv, tx); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c SystemCache) createWaypointsForSystem(ctx context.Context, system string, srv *Server, tx query.Tx) error {
+	waypointsIter := getPaginated[*api.Waypoint](
+		ctx,
+		srv,
+		func(page int) (urlPath string) {
+			return fmt.Sprintf("/systems/%s/waypoints?page=%d&limit=20", system, page)
+		},
+	)
+
+	for waypointPage, errPage := range waypointsIter {
+		if errPage != nil {
+			return fmt.Errorf("querying waypoints: %w", errPage)
+		}
+		if err := c.insertWaypointPage(ctx, tx, waypointPage); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (SystemCache) insertWaypointPage(ctx context.Context, tx query.Tx, page []*api.Waypoint) error {
+	for _, wp := range page {
+		if err := tx.InsertWaypoint(ctx, query.InsertWaypointParams{
+			Symbol: wp.Symbol,
+			System: wp.SystemSymbol,
+			Orbits: wp.Orbits,
+			X:      int64(wp.X),
+			Y:      int64(wp.Y),
+			Type:   string(wp.Type),
+		}); err != nil {
+			return fmt.Errorf("inserting waypoint '%s': %w", wp.Symbol, err)
 		}
 	}
 	return nil
@@ -88,35 +153,13 @@ func (c SystemCache) Create(ctx context.Context, srv *Server) error {
 	return errors.Join(err, tx.Done(err))
 }
 
-func insertSystemPage(ctx context.Context, tx query.Tx, page []*api.System) error {
-	for _, system := range page {
-		factions := make([]string, len(system.Factions))
-		for i, fac := range system.Factions {
-			factions[i] = string(fac.Symbol)
-		}
-
-		// TODO: use converter
-		if err := tx.InsertSystem(ctx, query.InsertSystemParams{
-			Symbol:   system.Symbol,
-			X:        int64(system.X),
-			Y:        int64(system.Y),
-			Type:     string(system.Type),
-			Factions: strings.Join(factions, ","),
-		}); err != nil {
-			return fmt.Errorf("inserting system '%s': %v", system.Symbol, err)
-		}
-	}
-
-	return nil
-}
-
 // FleetCache is an in-memory cache of all player-owned ships.
 type FleetCache struct {
 	Ships []*pb.Ship
 }
 
 // Create (re)populates the cache from the API.
-func (c FleetCache) Create(ctx context.Context, srv *Server) error {
+func (c *FleetCache) Create(ctx context.Context, srv *Server) error {
 	shipsIter := getPaginated[*api.Ship](
 		ctx,
 		srv,
@@ -143,7 +186,7 @@ func (c FleetCache) Create(ctx context.Context, srv *Server) error {
 // ShipByName returns a ship from the cache by its name.
 //
 // An error is returned when no ship with that name is found.
-func (c FleetCache) ShipByName(name string) (*pb.Ship, error) {
+func (c *FleetCache) ShipByName(name string) (*pb.Ship, error) {
 	for _, ship := range c.Ships {
 		if ship.Id == name {
 			return ship, nil
