@@ -8,6 +8,7 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/stnokott/spacetrader-server/internal/api"
 	"github.com/stnokott/spacetrader-server/internal/convert"
@@ -15,96 +16,36 @@ import (
 	pb "github.com/stnokott/spacetrader-server/internal/proto"
 )
 
-// Cache stores API-related data locally for faster access.
-type Cache interface {
-	// Exists returns false if the cache has not been created and otherwise false.
-	Exists(ctx context.Context, srv *Server) (bool, error)
-	// Update creates/refreshes the cache.
-	Update(ctx context.Context, srv *Server) error
-}
-
 var indexTimeout = 5 * time.Minute
 
-// CreateIndexes updates or creates all registered indexes.
+// CreateCaches updates or creates all registered indexes.
 // It should be called once at the beginning of the program loop.
-func (s *Server) CreateIndexes(ctxParent context.Context) (err error) {
+func (s *Server) CreateCaches(ctxParent context.Context) (err error) {
+	log.Info("creating caches")
+
 	ctx, cancel := context.WithTimeout(ctxParent, indexTimeout)
 	defer cancel()
 
-	log.Info("updating indexes")
+	var g errgroup.Group
 
-	var exists bool
-	caches := map[string]Cache{
-		"Systems": s.systemCache,
-		"Fleet":   s.fleetCache,
+	g.Go(func() error {
+		return s.systemCache.Create(ctx, s)
+	})
+	g.Go(func() error {
+		return s.fleetCache.Create(ctx, s)
+	})
+	if err = g.Wait(); err != nil {
+		err = fmt.Errorf("creating caches: %w", err)
+		return
 	}
-	for name, cache := range caches {
-		exists, err = cache.Exists(ctx, s)
-		if err != nil {
-			return
-		}
-		if exists {
-			log.WithField("cache_name", name).Debug("cache already initialized")
-			continue
-		}
-		log.WithField("cache_name", name).Debug("cache requires initialization")
-		if err = cache.Update(ctx, s); err != nil {
-			return
-		}
-	}
+	log.Info("caches created")
 	return
 }
 
-// DBCache implements the Cache interface.
-// It provides wrappers around database-related operations, like transactions.
-type DBCache struct {
-	existsFunc func(ctx context.Context, q *query.Queries) (bool, error)
-	updateFunc func(ctx context.Context, srv *Server, tx query.Tx) error
-}
+// SystemCache is a cache for galaxy systems.
+type SystemCache struct{}
 
-var _ Cache = (*DBCache)(nil)
-
-// NewDBCache creates a new DBCache, implementing the Cache interface.
-func NewDBCache(
-	existsFunc func(ctx context.Context, q *query.Queries) (bool, error),
-	updateFunc func(ctx context.Context, srv *Server, tx query.Tx) error,
-) Cache {
-	return &DBCache{
-		existsFunc: existsFunc,
-		updateFunc: updateFunc,
-	}
-}
-
-// Exists implements Cache.
-func (c *DBCache) Exists(ctx context.Context, srv *Server) (bool, error) {
-	return c.existsFunc(ctx, srv.query)
-}
-
-// Update implements Cache.
-func (c *DBCache) Update(ctx context.Context, srv *Server) error {
-	tx, err := query.WithTx(ctx, srv.db, srv.query)
-	if err != nil {
-		return err
-	}
-	err = c.updateFunc(ctx, srv, tx)
-	return errors.Join(err, tx.Done(err))
-}
-
-// NewSystemCache creates a new cache for systems.
-func NewSystemCache() Cache {
-	return NewDBCache(systemCacheExists, updateSystemCache)
-}
-
-// systemCacheExists returns true if the systems table has at least one row, indicating
-// an existing Systems index.
-func systemCacheExists(ctx context.Context, q *query.Queries) (bool, error) {
-	v, err := q.HasSystemsRows(ctx)
-	return v != 0, err
-}
-
-// updateSystemCache replaces the contents of the `systems` table with results from the API.
-// It continues reading from systemChan until it is closed or ctx expires.
-func updateSystemCache(ctx context.Context, srv *Server, tx query.Tx) error {
+func (SystemCache) createWithTx(ctx context.Context, srv *Server, tx query.Tx) error {
 	systemsIter := getPaginated[*api.System](
 		ctx,
 		srv,
@@ -128,6 +69,23 @@ func updateSystemCache(ctx context.Context, srv *Server, tx query.Tx) error {
 		}
 	}
 	return nil
+}
+
+// Create populates the contents of the `systems` table with results from the API.
+func (c SystemCache) Create(ctx context.Context, srv *Server) error {
+	// check if already exists
+	if v, err := srv.query.HasSystemsRows(ctx); err != nil {
+		return err
+	} else if v != 0 {
+		return nil
+	}
+
+	tx, err := query.WithTx(ctx, srv.db, srv.query)
+	if err != nil {
+		return err
+	}
+	err = c.createWithTx(ctx, srv, tx)
+	return errors.Join(err, tx.Done(err))
 }
 
 func insertSystemPage(ctx context.Context, tx query.Tx, page []*api.System) error {
@@ -154,18 +112,11 @@ func insertSystemPage(ctx context.Context, tx query.Tx, page []*api.System) erro
 
 // FleetCache is an in-memory cache of all player-owned ships.
 type FleetCache struct {
-	ships []*pb.Ship
+	Ships []*pb.Ship
 }
 
-var _ Cache = (*FleetCache)(nil)
-
-// Exists implements Cache.
-func (c *FleetCache) Exists(_ context.Context, _ *Server) (bool, error) {
-	return c.ships != nil, nil
-}
-
-// Update implements Cache.
-func (c *FleetCache) Update(ctx context.Context, srv *Server) error {
+// Create (re)populates the cache from the API.
+func (c FleetCache) Create(ctx context.Context, srv *Server) error {
 	shipsIter := getPaginated[*api.Ship](
 		ctx,
 		srv,
@@ -185,15 +136,15 @@ func (c *FleetCache) Update(ctx context.Context, srv *Server) error {
 			return fmt.Errorf("converting ship: %w", err)
 		}
 	}
-	c.ships = converted
+	c.Ships = converted
 	return nil
 }
 
 // ShipByName returns a ship from the cache by its name.
 //
 // An error is returned when no ship with that name is found.
-func (c *FleetCache) ShipByName(name string) (*pb.Ship, error) {
-	for _, ship := range c.ships {
+func (c FleetCache) ShipByName(name string) (*pb.Ship, error) {
+	for _, ship := range c.Ships {
 		if ship.Id == name {
 			return ship, nil
 		}

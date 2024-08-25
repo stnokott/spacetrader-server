@@ -11,6 +11,7 @@ require (
 	github.com/stretchr/testify v1.9.0
 	go-simpler.org/env v0.12.0
 	go.uber.org/ratelimit v0.3.1
+	golang.org/x/sync v0.8.0
 	google.golang.org/grpc v1.65.0
 	google.golang.org/protobuf v1.34.2
 	modernc.org/sqlite v1.32.0
@@ -30,7 +31,6 @@ require (
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	golang.org/x/net v0.27.0 // indirect
-	golang.org/x/sync v0.8.0 // indirect
 	golang.org/x/sys v0.22.0 // indirect
 	golang.org/x/text v0.16.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240722135656-d784300faade // indirect

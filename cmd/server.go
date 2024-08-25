@@ -26,8 +26,8 @@ type Server struct {
 	db    *sql.DB
 	query *query.Queries
 
-	systemCache Cache
-	fleetCache  *FleetCache
+	systemCache SystemCache
+	fleetCache  FleetCache
 
 	pb.UnimplementedSpacetraderServer
 }
@@ -54,8 +54,8 @@ func New(baseURL string, token string, dbFile string) (*Server, error) {
 		db:    db,
 		query: q,
 
-		systemCache: NewSystemCache(),
-		fleetCache:  &FleetCache{},
+		systemCache: SystemCache{},
+		fleetCache:  FleetCache{},
 	}, nil
 }
 
@@ -133,11 +133,11 @@ func (s *Server) GetCurrentAgent(ctx context.Context, _ *emptypb.Empty) (*pb.Age
 
 // GetFleet returns the complete list of ships in the agent's posession.
 func (s *Server) GetFleet(_ context.Context, _ *emptypb.Empty) (*pb.Fleet, error) {
-	if s.fleetCache.ships == nil {
+	if s.fleetCache.Ships == nil {
 		return nil, errors.New("fleet cache has not been initialized")
 	}
 	return &pb.Fleet{
-		Ships: s.fleetCache.ships,
+		Ships: s.fleetCache.Ships,
 	}, nil
 }
 
@@ -193,7 +193,7 @@ func (s *Server) GetSystemsInRect(rect *pb.Rect, stream pb.Spacetrader_GetSystem
 func (s *Server) shipsPerSystem() map[string]int {
 	m := map[string]int{}
 
-	for _, ship := range s.fleetCache.ships {
+	for _, ship := range s.fleetCache.Ships {
 		m[ship.CurrentLocation.System]++
 	}
 	return m

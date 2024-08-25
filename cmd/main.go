@@ -50,7 +50,7 @@ func main() {
 		_ = s.Close()
 	}()
 	// TODO: update in background, return ETA if queried
-	if err := s.CreateIndexes(context.Background()); err != nil {
+	if err := s.CreateCaches(context.Background()); err != nil {
 		log.Error(err)
 		return
 	}
