@@ -49,7 +49,7 @@ func (s *Server) CreateCaches(ctxParent context.Context) (err error) {
 // SystemCache is a cache for galaxy systems.
 type SystemCache struct{}
 
-func (c SystemCache) createWithTx(ctx context.Context, srv *Server, tx query.Tx) error {
+func (c SystemCache) populateWithTx(ctx context.Context, srv *Server, tx query.Tx) error {
 	systemsIter := getPaginated[*api.System](
 		ctx,
 		srv,
@@ -93,19 +93,19 @@ func (c SystemCache) insertSystemPage(ctx context.Context, srv *Server, tx query
 			return fmt.Errorf("inserting system '%s': %w", system.Symbol, err)
 		}
 
-		if err := c.createWaypointsForSystem(ctx, system.Symbol, srv, tx); err != nil {
+		if err := c.populateJumpgateWaypoints(ctx, system.Symbol, srv, tx); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (c SystemCache) createWaypointsForSystem(ctx context.Context, system string, srv *Server, tx query.Tx) error {
+func (c SystemCache) populateJumpgateWaypoints(ctx context.Context, system string, srv *Server, tx query.Tx) error {
 	waypointsIter := getPaginated[*api.Waypoint](
 		ctx,
 		srv,
 		func(page int) (urlPath string) {
-			return fmt.Sprintf("/systems/%s/waypoints?page=%d&limit=20", system, page)
+			return fmt.Sprintf("/systems/%s/waypoints?type=JUMP_GATE&page=%d&limit=20", system, page)
 		},
 	)
 
@@ -135,7 +135,7 @@ func (c SystemCache) insertWaypointPage(ctx context.Context, page []*api.Waypoin
 		}
 		if wp.Chart != nil {
 			// query jumpgate details if charted (otherwise there will be no jumpgate information)
-			if err := c.createJumpgatesForWaypoint(ctx, wp, srv, tx); err != nil {
+			if err := c.insertJumpgate(ctx, wp, srv, tx); err != nil {
 				return err
 			}
 		}
@@ -143,12 +143,7 @@ func (c SystemCache) insertWaypointPage(ctx context.Context, page []*api.Waypoin
 	return nil
 }
 
-func (SystemCache) createJumpgatesForWaypoint(ctx context.Context, wp *api.Waypoint, srv *Server, tx query.Tx) error {
-	// only handle jump gate type waypoints
-	if wp.Type != api.JUMPGATE {
-		return nil
-	}
-
+func (SystemCache) insertJumpgate(ctx context.Context, wp *api.Waypoint, srv *Server, tx query.Tx) error {
 	url := fmt.Sprintf("/systems/%s/waypoints/%s/jump-gate", wp.SystemSymbol, wp.Symbol)
 
 	result := new(api.JumpGate)
@@ -180,7 +175,7 @@ func (c SystemCache) Create(ctx context.Context, srv *Server) error {
 	if err != nil {
 		return err
 	}
-	err = c.createWithTx(ctx, srv, tx)
+	err = c.populateWithTx(ctx, srv, tx)
 	return errors.Join(err, tx.Done(err))
 }
 
