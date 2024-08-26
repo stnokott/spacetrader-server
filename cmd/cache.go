@@ -49,6 +49,24 @@ func (s *Server) CreateCaches(ctxParent context.Context) (err error) {
 // SystemCache is a cache for galaxy systems.
 type SystemCache struct{}
 
+// Create populates the contents of the `systems` table with results from the API.
+func (c SystemCache) Create(ctx context.Context, srv *Server) error {
+	// check if already exists
+	if v, err := srv.query.HasSystemsRows(ctx); err != nil {
+		return err
+	} else if v != 0 {
+		return nil
+	}
+
+	tx, err := query.WithTx(ctx, srv.db, srv.query)
+	if err != nil {
+		return err
+	}
+
+	err = c.populateWithTx(ctx, srv, tx)
+	return errors.Join(err, tx.Done(err))
+}
+
 func (c SystemCache) populateWithTx(ctx context.Context, srv *Server, tx query.Tx) error {
 	systemsIter := getPaginated[*api.System](
 		ctx,
@@ -64,13 +82,19 @@ func (c SystemCache) populateWithTx(ctx context.Context, srv *Server, tx query.T
 		return fmt.Errorf("truncating system/waypoint/jumpgate index: %w", err)
 	}
 
+	total := 0
+	n := 0
+
 	for systemPage, errPage := range systemsIter {
 		if errPage != nil {
 			return fmt.Errorf("querying systems: %w", errPage)
 		}
-		if err := c.insertSystemPage(ctx, srv, tx, systemPage); err != nil {
+		if err := c.insertSystemPage(ctx, srv, tx, systemPage.Items); err != nil {
 			return err
 		}
+		total = systemPage.Total
+		n += len(systemPage.Items)
+		log.Infof("system cache %05.2f%% completed", float64(n)/float64(total)*100)
 	}
 	return nil
 }
@@ -113,7 +137,7 @@ func (c SystemCache) populateJumpgateWaypoints(ctx context.Context, system strin
 		if errPage != nil {
 			return fmt.Errorf("querying waypoints: %w", errPage)
 		}
-		if err := c.insertWaypointPage(ctx, waypointPage, srv, tx); err != nil {
+		if err := c.insertWaypointPage(ctx, waypointPage.Items, srv, tx); err != nil {
 			return err
 		}
 	}
@@ -160,23 +184,6 @@ func (SystemCache) insertJumpgate(ctx context.Context, wp *api.Waypoint, srv *Se
 		}
 	}
 	return nil
-}
-
-// Create populates the contents of the `systems` table with results from the API.
-func (c SystemCache) Create(ctx context.Context, srv *Server) error {
-	// check if already exists
-	if v, err := srv.query.HasSystemsRows(ctx); err != nil {
-		return err
-	} else if v != 0 {
-		return nil
-	}
-
-	tx, err := query.WithTx(ctx, srv.db, srv.query)
-	if err != nil {
-		return err
-	}
-	err = c.populateWithTx(ctx, srv, tx)
-	return errors.Join(err, tx.Done(err))
 }
 
 // FleetCache is an in-memory cache of all player-owned ships.

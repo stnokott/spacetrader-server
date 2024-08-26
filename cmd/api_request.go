@@ -112,6 +112,12 @@ func expectStatus(resp *resty.Response, expectedStatus int) error {
 
 type pageFunc func(page int) (urlPath string)
 
+type pageResult[T any] struct {
+	Items []T
+	// The expected total number of items returned once the iterator is exhausted.
+	Total int
+}
+
 // getPaginated returns an iterator, traversing all pages of a paginated endpoint.
 // Each iteration yields one page of data.
 //
@@ -123,13 +129,13 @@ func getPaginated[T any](
 	ctx context.Context,
 	s *Server,
 	pageFn pageFunc,
-) iter.Seq2[[]T, error] {
+) iter.Seq2[*pageResult[T], error] {
 	// total expected number of items
 	total := 1 // start with total > 0 to enter the first loop iteration
 	// total number of items received
 	n := 0
 
-	return func(yield func([]T, error) bool) {
+	return func(yield func(*pageResult[T], error) bool) {
 		for page := 1; n < total; page++ {
 			urlPath := pageFn(page)
 
@@ -148,7 +154,10 @@ func getPaginated[T any](
 				return
 			}
 
-			if !yield(result.Data, nil) {
+			if !yield(&pageResult[T]{
+				Items: result.Data,
+				Total: total,
+			}, nil) {
 				return
 			}
 			n += len(result.Data)
@@ -158,14 +167,20 @@ func getPaginated[T any](
 }
 
 // collectPages combines all pages of an iterator into one slice, returning any error encountered on any page.
-func collectPages[V any](seq iter.Seq2[[]V, error]) ([]V, error) {
-	out := []V{}
+func collectPages[V any](seq iter.Seq2[*pageResult[V], error]) ([]V, error) {
+	var out []V
+
+	i := 0
 	for page, err := range seq {
 		if err != nil {
 			return nil, err
 		}
-		for _, item := range page {
-			out = append(out, item)
+		if out == nil {
+			out = make([]V, page.Total)
+		}
+		for _, item := range page.Items {
+			out[i] = item
+			i++
 		}
 	}
 	return out, nil
