@@ -81,6 +81,7 @@ type ConverterAPI interface {
 	// goverter:map Nav.Status Status
 	// goverter:map Nav.FlightMode FlightMode
 	ConvertShip(source *api.Ship) (*pb.Ship, error)
+	ConvertShips(source []*api.Ship) ([]*pb.Ship, error)
 }
 
 // ParseTimestamp converts a Go time.Time to a protobuf timestamp.

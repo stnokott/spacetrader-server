@@ -204,13 +204,9 @@ func (c *FleetCache) Create(ctx context.Context, srv *Server) error {
 		return fmt.Errorf("querying ships: %w", err)
 	}
 
-	converted := make([]*pb.Ship, len(ships))
-	for i, ship := range ships {
-		if converted[i], err = convert.ConvertShip(ship); err != nil {
-			return fmt.Errorf("converting ship: %w", err)
-		}
+	if c.Ships, err = convert.ConvertShips(ships); err != nil {
+		return fmt.Errorf("converting ship: %w", err)
 	}
-	c.Ships = converted
 	return nil
 }
 
