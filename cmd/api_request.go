@@ -118,7 +118,7 @@ type pageFunc func(page int) (urlPath string)
 // Pass a function pageFn which assembles the URL path (without the base URL) depending on
 // the current page.
 //
-// You should stop iterating when an error is yielded.
+// The iterator will stop when an error is returned.
 func getPaginated[T any](
 	ctx context.Context,
 	s *Server,
