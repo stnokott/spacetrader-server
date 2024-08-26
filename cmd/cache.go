@@ -155,7 +155,7 @@ func (SystemCache) populateJumpgateWaypoint(ctx context.Context, system string, 
 	waypoint := &struct {
 		Data api.Waypoint `json:"data"`
 	}{}
-	if err := srv.get(ctx, waypoint, url, 200); err != nil {
+	if err := srv.get(ctx, waypoint, url); err != nil {
 		return fmt.Errorf("querying waypoint: %w", err)
 	}
 	if waypoint.Data.Chart == nil {
@@ -167,7 +167,7 @@ func (SystemCache) populateJumpgateWaypoint(ctx context.Context, system string, 
 	jump := &struct {
 		Data api.JumpGate `json:"data"`
 	}{}
-	if err := srv.get(ctx, jump, url, 200); err != nil {
+	if err := srv.get(ctx, jump, url); err != nil {
 		return fmt.Errorf("querying jump gate: %w", err)
 	}
 

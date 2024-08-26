@@ -110,7 +110,7 @@ func (s *Server) Ping(_ context.Context, _ *emptypb.Empty) (*emptypb.Empty, erro
 // GetServerStatus returns the current server status and some statistics.
 func (s *Server) GetServerStatus(ctx context.Context, _ *emptypb.Empty) (*pb.ServerStatus, error) {
 	result := new(api.Status)
-	if err := s.get(ctx, result, "/", 200); err != nil {
+	if err := s.get(ctx, result, "/"); err != nil {
 		return nil, err
 	}
 
@@ -124,7 +124,7 @@ func (s *Server) GetCurrentAgent(ctx context.Context, _ *emptypb.Empty) (*pb.Age
 		// info in a useless "data" field.
 		Data api.Agent `json:"data"`
 	})
-	if err := s.get(ctx, result, "/my/agent", 200); err != nil {
+	if err := s.get(ctx, result, "/my/agent"); err != nil {
 		return nil, err
 	}
 

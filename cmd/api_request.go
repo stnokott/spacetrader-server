@@ -68,7 +68,7 @@ func newRateLimiter() ratelimit.Limiter {
 }
 
 // get is a generic utility function for reducing boilerplate client code.
-func (s *Server) get(ctx context.Context, dst any, path string, expectedStatus int) (err error) {
+func (s *Server) get(ctx context.Context, dst any, path string) (err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("%s: %w", path, err)
@@ -80,34 +80,10 @@ func (s *Server) get(ctx context.Context, dst any, path string, expectedStatus i
 	if err != nil {
 		return
 	}
-	err = expectStatus(resp, expectedStatus)
-	return
-}
-
-// UnexpectedStatusCodeErr is used when the HTTP status code returned from a request is different
-// from the expected status code.
-//
-// `Msg` is filled from the response body.
-type UnexpectedStatusCodeErr struct {
-	Expected, Actual int
-	Msg              string
-}
-
-func (e UnexpectedStatusCodeErr) Error() string {
-	return fmt.Sprintf("expected status %d, got %d (%s)", e.Expected, e.Actual, e.Msg)
-}
-
-// expectStatus compares the status code of a request with the expected code and returns an error if a mismatch is encountered.
-// Otherwise, it returns nil.
-func expectStatus(resp *resty.Response, expectedStatus int) error {
-	if resp.StatusCode() != expectedStatus {
-		return UnexpectedStatusCodeErr{
-			Expected: expectedStatus,
-			Actual:   resp.StatusCode(),
-			Msg:      string(resp.Body()),
-		}
+	if !resp.IsSuccess() {
+		err = fmt.Errorf("unexpected status code %d", resp.StatusCode())
 	}
-	return nil
+	return
 }
 
 type pageFunc func(page int) (urlPath string)
@@ -143,7 +119,7 @@ func getPaginated[T any](
 				Data []T       `json:"data"`
 				Meta *api.Meta `json:"meta"`
 			})
-			if err := s.get(ctx, result, urlPath, 200); err != nil {
+			if err := s.get(ctx, result, urlPath); err != nil {
 				_ = yield(nil, err)
 				return
 			}
