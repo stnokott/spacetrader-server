@@ -24,7 +24,7 @@ type InsertWaypointParams struct {
 	Y       int64
 	Orbits  interface{}
 	Type    string
-	Charted interface{}
+	Charted bool
 }
 
 func (q *Queries) InsertWaypoint(ctx context.Context, arg InsertWaypointParams) error {

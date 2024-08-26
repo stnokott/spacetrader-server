@@ -24,5 +24,5 @@ type Waypoint struct {
 	X       int64
 	Y       int64
 	Type    string
-	Charted interface{}
+	Charted bool
 }
