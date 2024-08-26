@@ -4,6 +4,11 @@
 
 package query
 
+type JumpGate struct {
+	Waypoint   string
+	ConnectsTo string
+}
+
 type System struct {
 	Symbol   string
 	X        int64
@@ -13,10 +18,11 @@ type System struct {
 }
 
 type Waypoint struct {
-	Symbol string
-	System string
-	Orbits interface{}
-	X      int64
-	Y      int64
-	Type   string
+	Symbol  string
+	System  string
+	Orbits  interface{}
+	X       int64
+	Y       int64
+	Type    string
+	Charted interface{}
 }

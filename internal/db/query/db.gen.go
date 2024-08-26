@@ -33,11 +33,17 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.hasSystemsRowsStmt, err = db.PrepareContext(ctx, hasSystemsRows); err != nil {
 		return nil, fmt.Errorf("error preparing query HasSystemsRows: %w", err)
 	}
+	if q.insertJumpGateStmt, err = db.PrepareContext(ctx, insertJumpGate); err != nil {
+		return nil, fmt.Errorf("error preparing query InsertJumpGate: %w", err)
+	}
 	if q.insertSystemStmt, err = db.PrepareContext(ctx, insertSystem); err != nil {
 		return nil, fmt.Errorf("error preparing query InsertSystem: %w", err)
 	}
 	if q.insertWaypointStmt, err = db.PrepareContext(ctx, insertWaypoint); err != nil {
 		return nil, fmt.Errorf("error preparing query InsertWaypoint: %w", err)
+	}
+	if q.truncateJumpGatesStmt, err = db.PrepareContext(ctx, truncateJumpGates); err != nil {
+		return nil, fmt.Errorf("error preparing query TruncateJumpGates: %w", err)
 	}
 	if q.truncateSystemsStmt, err = db.PrepareContext(ctx, truncateSystems); err != nil {
 		return nil, fmt.Errorf("error preparing query TruncateSystems: %w", err)
@@ -65,6 +71,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing hasSystemsRowsStmt: %w", cerr)
 		}
 	}
+	if q.insertJumpGateStmt != nil {
+		if cerr := q.insertJumpGateStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing insertJumpGateStmt: %w", cerr)
+		}
+	}
 	if q.insertSystemStmt != nil {
 		if cerr := q.insertSystemStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing insertSystemStmt: %w", cerr)
@@ -73,6 +84,11 @@ func (q *Queries) Close() error {
 	if q.insertWaypointStmt != nil {
 		if cerr := q.insertWaypointStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing insertWaypointStmt: %w", cerr)
+		}
+	}
+	if q.truncateJumpGatesStmt != nil {
+		if cerr := q.truncateJumpGatesStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing truncateJumpGatesStmt: %w", cerr)
 		}
 	}
 	if q.truncateSystemsStmt != nil {
@@ -127,8 +143,10 @@ type Queries struct {
 	getSystemByNameStmt   *sql.Stmt
 	getSystemsInRectStmt  *sql.Stmt
 	hasSystemsRowsStmt    *sql.Stmt
+	insertJumpGateStmt    *sql.Stmt
 	insertSystemStmt      *sql.Stmt
 	insertWaypointStmt    *sql.Stmt
+	truncateJumpGatesStmt *sql.Stmt
 	truncateSystemsStmt   *sql.Stmt
 	truncateWaypointsStmt *sql.Stmt
 }
@@ -140,8 +158,10 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		getSystemByNameStmt:   q.getSystemByNameStmt,
 		getSystemsInRectStmt:  q.getSystemsInRectStmt,
 		hasSystemsRowsStmt:    q.hasSystemsRowsStmt,
+		insertJumpGateStmt:    q.insertJumpGateStmt,
 		insertSystemStmt:      q.insertSystemStmt,
 		insertWaypointStmt:    q.insertWaypointStmt,
+		truncateJumpGatesStmt: q.truncateJumpGatesStmt,
 		truncateSystemsStmt:   q.truncateSystemsStmt,
 		truncateWaypointsStmt: q.truncateWaypointsStmt,
 	}

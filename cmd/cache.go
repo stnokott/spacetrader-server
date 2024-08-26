@@ -18,7 +18,7 @@ import (
 
 // TODO: for waypoint cache, implement on-demand caching:
 // perform waypoint caching in the background, slowly traversing all known systems
-// when a waypoint is queried that is not cached yet, prioritize that waypoin
+// when a waypoint is queried that is not cached yet, prioritize that waypoint
 
 var indexTimeout = 3 * time.Hour
 
@@ -59,9 +59,9 @@ func (c SystemCache) createWithTx(ctx context.Context, srv *Server, tx query.Tx)
 	)
 
 	// delete existing index
-	log.Debug("clearing existing system/waypoint index")
-	if err := errors.Join(tx.TruncateSystems(ctx), tx.TruncateSystems(ctx)); err != nil {
-		return fmt.Errorf("truncating system/waypoint index: %w", err)
+	log.Debug("clearing existing system/waypoint/jumpgate index")
+	if err := errors.Join(tx.TruncateSystems(ctx), tx.TruncateSystems(ctx), tx.TruncateJumpGates(ctx)); err != nil {
+		return fmt.Errorf("truncating system/waypoint/jumpgate index: %w", err)
 	}
 
 	for systemPage, errPage := range systemsIter {
@@ -113,24 +113,55 @@ func (c SystemCache) createWaypointsForSystem(ctx context.Context, system string
 		if errPage != nil {
 			return fmt.Errorf("querying waypoints: %w", errPage)
 		}
-		if err := c.insertWaypointPage(ctx, tx, waypointPage); err != nil {
+		if err := c.insertWaypointPage(ctx, waypointPage, srv, tx); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (SystemCache) insertWaypointPage(ctx context.Context, tx query.Tx, page []*api.Waypoint) error {
+func (c SystemCache) insertWaypointPage(ctx context.Context, page []*api.Waypoint, srv *Server, tx query.Tx) error {
 	for _, wp := range page {
 		if err := tx.InsertWaypoint(ctx, query.InsertWaypointParams{
-			Symbol: wp.Symbol,
-			System: wp.SystemSymbol,
-			Orbits: wp.Orbits,
-			X:      int64(wp.X),
-			Y:      int64(wp.Y),
-			Type:   string(wp.Type),
+			Symbol:  wp.Symbol,
+			System:  wp.SystemSymbol,
+			Orbits:  wp.Orbits,
+			X:       int64(wp.X),
+			Y:       int64(wp.Y),
+			Type:    string(wp.Type),
+			Charted: wp.Chart != nil,
 		}); err != nil {
 			return fmt.Errorf("inserting waypoint '%s': %w", wp.Symbol, err)
+		}
+		if wp.Chart != nil {
+			// query jumpgate details if charted (otherwise there will be no jumpgate information)
+			if err := c.createJumpgatesForWaypoint(ctx, wp, srv, tx); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (SystemCache) createJumpgatesForWaypoint(ctx context.Context, wp *api.Waypoint, srv *Server, tx query.Tx) error {
+	// only handle jump gate type waypoints
+	if wp.Type != api.JUMPGATE {
+		return nil
+	}
+
+	url := fmt.Sprintf("/systems/%s/waypoints/%s/jump-gate", wp.SystemSymbol, wp.Symbol)
+
+	result := new(api.JumpGate)
+	if err := srv.get(ctx, result, url, 200); err != nil {
+		return fmt.Errorf("querying jump gate: %w", err)
+	}
+
+	for _, connection := range result.Connections {
+		if err := tx.InsertJumpGate(ctx, query.InsertJumpGateParams{
+			Waypoint:   wp.Symbol,
+			ConnectsTo: connection,
+		}); err != nil {
+			return fmt.Errorf("inserting jump gate: %w", err)
 		}
 	}
 	return nil

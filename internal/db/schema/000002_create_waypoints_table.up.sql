@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS waypoints (
 	x INTEGER NOT NULL,
 	y INTEGER NOT NULL,
 	type TEXT NOT NULL,
+	charted BOOL NOT NULL,
 	FOREIGN KEY(system) REFERENCES systems(symbol)
 );
 
