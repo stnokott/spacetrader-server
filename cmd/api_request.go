@@ -57,7 +57,7 @@ func beforeRequest() func(*resty.Client, *resty.Request) error {
 	rateLimiter := newRateLimiter()
 	return func(c *resty.Client, r *resty.Request) error {
 		_ = rateLimiter.Take()
-		log.WithField("baseURL", c.BaseURL).Debugf("%s %s", r.Method, r.URL)
+		log.Debugf("%s %s", r.Method, r.URL)
 		return nil
 	}
 }
