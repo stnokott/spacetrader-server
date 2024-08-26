@@ -18,11 +18,10 @@ type System struct {
 }
 
 type Waypoint struct {
-	Symbol  string
-	System  string
-	Orbits  interface{}
-	X       int64
-	Y       int64
-	Type    string
-	Charted bool
+	Symbol string
+	System string
+	Orbits interface{}
+	X      int64
+	Y      int64
+	Type   string
 }

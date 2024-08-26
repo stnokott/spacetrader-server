@@ -11,20 +11,19 @@ import (
 
 const insertWaypoint = `-- name: InsertWaypoint :exec
 INSERT INTO waypoints (
-	symbol, system, x, y, orbits, type, charted
+	symbol, system, x, y, orbits, type
 ) VALUES (
-	?, ?, ?, ?, ?, ?, ?
+	?, ?, ?, ?, ?, ?
 )
 `
 
 type InsertWaypointParams struct {
-	Symbol  string
-	System  string
-	X       int64
-	Y       int64
-	Orbits  interface{}
-	Type    string
-	Charted bool
+	Symbol string
+	System string
+	X      int64
+	Y      int64
+	Orbits interface{}
+	Type   string
 }
 
 func (q *Queries) InsertWaypoint(ctx context.Context, arg InsertWaypointParams) error {
@@ -35,7 +34,6 @@ func (q *Queries) InsertWaypoint(ctx context.Context, arg InsertWaypointParams) 
 		arg.Y,
 		arg.Orbits,
 		arg.Type,
-		arg.Charted,
 	)
 	return err
 }

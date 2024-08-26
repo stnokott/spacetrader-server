@@ -122,13 +122,13 @@ func (s *Server) GetCurrentAgent(ctx context.Context, _ *emptypb.Empty) (*pb.Age
 	result := new(struct {
 		// for some reason, SpaceTraders decided it's a good idea to wrap the agent
 		// info in a useless "data" field.
-		Data *api.Agent `json:"data"`
+		Data api.Agent `json:"data"`
 	})
 	if err := s.get(ctx, result, "/my/agent", 200); err != nil {
 		return nil, err
 	}
 
-	return convert.ConvertAgent(result.Data)
+	return convert.ConvertAgent(&result.Data)
 }
 
 // GetFleet returns the complete list of ships in the agent's posession.

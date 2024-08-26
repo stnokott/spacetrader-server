@@ -16,9 +16,10 @@ import (
 	pb "github.com/stnokott/spacetrader-server/internal/proto"
 )
 
-// TODO: for waypoint cache, implement on-demand caching:
-// perform waypoint caching in the background, slowly traversing all known systems
-// when a waypoint is queried that is not cached yet, prioritize that waypoint
+// TODO: write functions for querying API stuff (e.g. getSystem)
+// which wrap API calls, but also handle caching.
+// So when calling getSystem and the queried system doesn't exist in the cache yet,
+// we query the API and write the result to the cache.
 
 var indexTimeout = 3 * time.Hour
 
@@ -117,49 +118,8 @@ func (c SystemCache) insertSystemPage(ctx context.Context, srv *Server, tx query
 			return fmt.Errorf("inserting system '%s': %w", system.Symbol, err)
 		}
 
-		if err := c.populateJumpgateWaypoints(ctx, system.Symbol, srv, tx); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (c SystemCache) populateJumpgateWaypoints(ctx context.Context, system string, srv *Server, tx query.Tx) error {
-	waypointsIter := getPaginated[*api.Waypoint](
-		ctx,
-		srv,
-		func(page int) (urlPath string) {
-			return fmt.Sprintf("/systems/%s/waypoints?type=JUMP_GATE&page=%d&limit=20", system, page)
-		},
-	)
-
-	for waypointPage, errPage := range waypointsIter {
-		if errPage != nil {
-			return fmt.Errorf("querying waypoints: %w", errPage)
-		}
-		if err := c.insertWaypointPage(ctx, waypointPage.Items, srv, tx); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (c SystemCache) insertWaypointPage(ctx context.Context, page []*api.Waypoint, srv *Server, tx query.Tx) error {
-	for _, wp := range page {
-		if err := tx.InsertWaypoint(ctx, query.InsertWaypointParams{
-			Symbol:  wp.Symbol,
-			System:  wp.SystemSymbol,
-			Orbits:  wp.Orbits,
-			X:       int64(wp.X),
-			Y:       int64(wp.Y),
-			Type:    string(wp.Type),
-			Charted: wp.Chart != nil,
-		}); err != nil {
-			return fmt.Errorf("inserting waypoint '%s': %w", wp.Symbol, err)
-		}
-		if wp.Chart != nil {
-			// query jumpgate details if charted (otherwise there will be no jumpgate information)
-			if err := c.insertJumpgate(ctx, wp, srv, tx); err != nil {
+		for _, wp := range system.Waypoints {
+			if err := c.insertWaypoint(ctx, system.Symbol, &wp, srv, tx); err != nil {
 				return err
 			}
 		}
@@ -167,20 +127,56 @@ func (c SystemCache) insertWaypointPage(ctx context.Context, page []*api.Waypoin
 	return nil
 }
 
-func (SystemCache) insertJumpgate(ctx context.Context, wp *api.Waypoint, srv *Server, tx query.Tx) error {
-	url := fmt.Sprintf("/systems/%s/waypoints/%s/jump-gate", wp.SystemSymbol, wp.Symbol)
+func (c SystemCache) insertWaypoint(ctx context.Context, system string, wp *api.SystemWaypoint, srv *Server, tx query.Tx) error {
+	if err := tx.InsertWaypoint(ctx, query.InsertWaypointParams{
+		Symbol: wp.Symbol,
+		System: system,
+		X:      int64(wp.X),
+		Y:      int64(wp.Y),
+		Orbits: wp.Orbits,
+		Type:   string(wp.Type),
+	}); err != nil {
+		return fmt.Errorf("inserting waypoint '%s': %w", wp.Symbol, err)
+	}
 
-	result := new(api.JumpGate)
-	if err := srv.get(ctx, result, url, 200); err != nil {
+	if wp.Type == api.JUMPGATE {
+		if err := c.populateJumpgateWaypoint(ctx, system, wp.Symbol, srv, tx); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (SystemCache) populateJumpgateWaypoint(ctx context.Context, system string, wp string, srv *Server, tx query.Tx) error {
+	// check if waypoint if charted (because if it isn't, we dont have jumpgate info)
+	// also, this information isn't available in the SystemWaypoint type, so we need to waste an API call for checking.
+	url := fmt.Sprintf("/systems/%s/waypoints/%s", system, wp)
+	waypoint := &struct {
+		Data api.Waypoint `json:"data"`
+	}{}
+	if err := srv.get(ctx, waypoint, url, 200); err != nil {
+		return fmt.Errorf("querying waypoint: %w", err)
+	}
+	if waypoint.Data.Chart == nil {
+		// not charted => no jumpgate info => abort
+		return nil
+	}
+
+	url = fmt.Sprintf("/systems/%s/waypoints/%s/jump-gate", system, wp)
+	jump := &struct {
+		Data api.JumpGate `json:"data"`
+	}{}
+	if err := srv.get(ctx, jump, url, 200); err != nil {
 		return fmt.Errorf("querying jump gate: %w", err)
 	}
 
-	for _, connection := range result.Connections {
+	for _, connection := range jump.Data.Connections {
 		if err := tx.InsertJumpGate(ctx, query.InsertJumpGateParams{
-			Waypoint:   wp.Symbol,
+			Waypoint:   wp,
 			ConnectsTo: connection,
 		}); err != nil {
-			return fmt.Errorf("inserting jump gate: %w", err)
+			return fmt.Errorf("inserting jumpgate: %w", err)
 		}
 	}
 	return nil
