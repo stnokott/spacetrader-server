@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -21,37 +22,84 @@ import (
 // So when calling getSystem and the queried system doesn't exist in the cache yet,
 // we query the API and write the result to the cache.
 
-var indexTimeout = 3 * time.Hour
+type cacheManager struct {
+	caches map[string]cache
+}
+
+type progressFunc func(total int, current int)
+
+type cache interface {
+	Create(ctx context.Context, srv *Server, progressFunc progressFunc) error
+}
+
+func (cm cacheManager) Create(ctx context.Context, srv *Server) error {
+	g, ctxCache := errgroup.WithContext(ctx)
+
+	type progress [2]int // total, current
+	var cacheProgress sync.Map
+
+	// start cache workers
+	for name, cache := range cm.caches {
+		g.Go(func() error {
+			return cache.Create(ctxCache, srv, func(total int, current int) {
+				cacheProgress.Store(name, progress{total, current})
+			})
+		})
+	}
+
+	// channel for stopping the consumer
+	stopChan := make(chan struct{})
+	defer func() {
+		stopChan <- struct{}{}
+	}()
+
+	// start progress consumer
+	go func() {
+		ticker := time.NewTicker(5 * time.Second)
+		for {
+			select {
+			case <-stopChan:
+				return
+			case <-ticker.C:
+				cacheProgress.Range(func(key, value any) bool {
+					v := value.(progress)
+					log.Infof("Cache %s at %d/%d", key, v[1], v[0])
+					return true
+				})
+			}
+		}
+	}()
+
+	return g.Wait()
+}
+
+var indexTimeout = 1 * time.Hour
 
 // CreateCaches updates or creates all registered indexes.
 // It should be called once at the beginning of the program loop.
-func (s *Server) CreateCaches(ctxParent context.Context) (err error) {
+func (s *Server) CreateCaches(ctxParent context.Context) error {
 	log.Info("creating caches")
 
 	ctx, cancel := context.WithTimeout(ctxParent, indexTimeout)
 	defer cancel()
 
-	var g errgroup.Group
-
-	g.Go(func() error {
-		return s.systemCache.Create(ctx, s)
-	})
-	g.Go(func() error {
-		return s.fleetCache.Create(ctx, s)
-	})
-	if err = g.Wait(); err != nil {
-		err = fmt.Errorf("creating caches: %w", err)
-		return
+	cacheManager := cacheManager{
+		caches: map[string]cache{
+			"Systems": s.systemCache,
+			"Fleet":   s.fleetCache,
+		},
 	}
-	log.Info("caches created")
-	return
+
+	return cacheManager.Create(ctx, s)
 }
 
 // SystemCache is a cache for galaxy systems.
 type SystemCache struct{}
 
+var _ cache = SystemCache{}
+
 // Create populates the contents of the `systems` table with results from the API.
-func (c SystemCache) Create(ctx context.Context, srv *Server) error {
+func (c SystemCache) Create(ctx context.Context, srv *Server, progressFunc progressFunc) error {
 	// check if already exists
 	if v, err := srv.query.HasSystemsRows(ctx); err != nil {
 		return err
@@ -64,11 +112,11 @@ func (c SystemCache) Create(ctx context.Context, srv *Server) error {
 		return err
 	}
 
-	err = c.populateWithTx(ctx, srv, tx)
+	err = c.populateWithTx(ctx, srv, tx, progressFunc)
 	return errors.Join(err, tx.Done(err))
 }
 
-func (c SystemCache) populateWithTx(ctx context.Context, srv *Server, tx query.Tx) error {
+func (c SystemCache) populateWithTx(ctx context.Context, srv *Server, tx query.Tx, progressFunc progressFunc) error {
 	systemsIter := getPaginated[*api.System](
 		ctx,
 		srv,
@@ -95,7 +143,7 @@ func (c SystemCache) populateWithTx(ctx context.Context, srv *Server, tx query.T
 		}
 		total = systemPage.Total
 		n += len(systemPage.Items)
-		log.Infof("system cache %05.2f%% completed", float64(n)/float64(total)*100)
+		progressFunc(total, n)
 	}
 	return nil
 }
@@ -187,8 +235,11 @@ type FleetCache struct {
 	Ships []*pb.Ship
 }
 
+var _ cache = (*FleetCache)(nil)
+
 // Create (re)populates the cache from the API.
-func (c *FleetCache) Create(ctx context.Context, srv *Server) error {
+func (c *FleetCache) Create(ctx context.Context, srv *Server, progressFunc progressFunc) error {
+	progressFunc(1, 0)
 	shipsIter := getPaginated[*api.Ship](
 		ctx,
 		srv,
@@ -205,6 +256,7 @@ func (c *FleetCache) Create(ctx context.Context, srv *Server) error {
 	if c.Ships, err = convert.ConvertShips(ships); err != nil {
 		return fmt.Errorf("converting ship: %w", err)
 	}
+	progressFunc(1, 1)
 	return nil
 }
 

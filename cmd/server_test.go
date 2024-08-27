@@ -9,7 +9,7 @@ import (
 
 func TestServerShipsPerSystem(t *testing.T) {
 	server := &Server{
-		fleetCache: FleetCache{
+		fleetCache: &FleetCache{
 			[]*pb.Ship{
 				{CurrentLocation: &pb.Ship_Location{System: "Foo"}},
 				{CurrentLocation: &pb.Ship_Location{System: "Bar"}},

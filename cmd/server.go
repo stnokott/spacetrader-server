@@ -27,7 +27,7 @@ type Server struct {
 	query *query.Queries
 
 	systemCache SystemCache
-	fleetCache  FleetCache
+	fleetCache  *FleetCache
 
 	pb.UnimplementedSpacetraderServer
 }
@@ -55,7 +55,7 @@ func New(baseURL string, token string, dbFile string) (*Server, error) {
 		query: q,
 
 		systemCache: SystemCache{},
-		fleetCache:  FleetCache{},
+		fleetCache:  &FleetCache{},
 	}, nil
 }
 
