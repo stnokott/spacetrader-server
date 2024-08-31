@@ -2,7 +2,6 @@
 package log
 
 import (
-	"bytes"
 	"fmt"
 	"strings"
 	"time"
@@ -64,8 +63,8 @@ var levelColors = map[logrus.Level]aurora.Color{
 	logrus.ErrorLevel: aurora.RedBg | aurora.WhiteFg,
 	logrus.WarnLevel:  aurora.MagentaBg | aurora.BrightBg | aurora.WhiteFg,
 	logrus.InfoLevel:  aurora.BlueBg | aurora.WhiteFg,
-	logrus.DebugLevel: aurora.WhiteFg | aurora.FaintFm,
-	logrus.TraceLevel: aurora.WhiteFg | aurora.FaintFm,
+	logrus.DebugLevel: aurora.WhiteFg,
+	logrus.TraceLevel: aurora.WhiteFg,
 }
 
 // maps each component name to a unique color which is passed to aurora.Index().
@@ -75,7 +74,6 @@ var componentColors = map[string]uint8{}
 // we predefine a biased (ordered) list of colors, beginning with ones that are very clear.
 // this prevents using faint colors which can happen when randomly choosing available colors.
 var componentColorPool = []uint8{
-	20,  // blue
 	31,  // turqoise
 	41,  // light yellow
 	55,  // dark blue
@@ -102,8 +100,6 @@ func addComponentColor(name string) {
 
 // Format implements logrus.Formatter
 func (f *componentFormatter) Format(entry *logrus.Entry) ([]byte, error) {
-	var buf bytes.Buffer
-
 	comp, exists := entry.Data[_componentField]
 	if !exists {
 		comp = "!COMP"
@@ -113,20 +109,29 @@ func (f *componentFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 		return nil, fmt.Errorf("field '%s' invalid type, expected string, got %T", _componentField, comp)
 	}
 
-	buf.WriteString(aurora.Colorize("["+levelStrings[entry.Level]+"]", levelColors[entry.Level]).String())
-	buf.WriteByte(' ')
-	buf.WriteString(entry.Time.Format(time.DateTime))
-	buf.WriteByte(' ')
-	buf.WriteString(aurora.Index(componentColors[componentName], "["+componentName+"]").String())
+	levelStr := "[" + levelStrings[entry.Level] + "]"
+	timeStr := entry.Time.Format(time.DateTime)
+	compStr := "[" + componentName + "]"
 	// space padding
 	if len(componentName) < f.MaxComponentLength {
-		buf.WriteString(strings.Repeat(" ", f.MaxComponentLength-len(componentName)))
+		compStr += strings.Repeat(" ", f.MaxComponentLength-len(componentName))
 	}
-	buf.WriteByte(' ')
-	buf.WriteString(entry.Message)
-	buf.WriteByte('\n')
 
-	return buf.Bytes(), nil
+	var out string
+	if entry.Level == logrus.DebugLevel || entry.Level == logrus.TraceLevel {
+		// faint style for the whole message
+		out = aurora.Faint(fmt.Sprintln(levelStr, timeStr, compStr, entry.Message)).String()
+	} else {
+		// regular, colored style
+		out = fmt.Sprintln(
+			aurora.Colorize(levelStr, levelColors[entry.Level]),
+			timeStr,
+			aurora.Index(componentColors[componentName], compStr),
+			entry.Message,
+		)
+	}
+
+	return []byte(out), nil
 }
 
 func padSpaces(s string, pad int) string {
