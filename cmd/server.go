@@ -12,6 +12,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/stnokott/spacetrader-server/internal/api"
 	"github.com/stnokott/spacetrader-server/internal/convert"
+	"github.com/stnokott/spacetrader-server/internal/worker"
 	"google.golang.org/grpc"
 
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -28,6 +29,8 @@ type Server struct {
 
 	systemCache SystemCache
 	fleetCache  *FleetCache
+
+	worker *worker.Worker
 
 	pb.UnimplementedSpacetraderServer
 }
@@ -49,6 +52,9 @@ func New(baseURL string, token string, dbFile string) (*Server, error) {
 		return nil, err
 	}
 
+	worker := worker.NewWorker()
+	worker.Start(context.TODO(), true)
+
 	return &Server{
 		api:   r,
 		db:    db,
@@ -56,6 +62,7 @@ func New(baseURL string, token string, dbFile string) (*Server, error) {
 
 		systemCache: SystemCache{},
 		fleetCache:  &FleetCache{},
+		worker:      worker,
 	}, nil
 }
 

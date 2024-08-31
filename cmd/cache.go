@@ -5,11 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/sync/errgroup"
 
 	"github.com/stnokott/spacetrader-server/internal/api"
 	"github.com/stnokott/spacetrader-server/internal/convert"
@@ -22,57 +20,6 @@ import (
 // So when calling getSystem and the queried system doesn't exist in the cache yet,
 // we query the API and write the result to the cache.
 
-type cacheManager struct {
-	caches map[string]cache
-}
-
-type progressFunc func(total int, current int)
-
-type cache interface {
-	Create(ctx context.Context, srv *Server, progressFunc progressFunc) error
-}
-
-func (cm cacheManager) Create(ctx context.Context, srv *Server) error {
-	g, ctxCache := errgroup.WithContext(ctx)
-
-	type progress [2]int // total, current
-	var cacheProgress sync.Map
-
-	// start cache workers
-	for name, cache := range cm.caches {
-		g.Go(func() error {
-			return cache.Create(ctxCache, srv, func(total int, current int) {
-				cacheProgress.Store(name, progress{total, current})
-			})
-		})
-	}
-
-	// channel for stopping the consumer
-	stopChan := make(chan struct{})
-	defer func() {
-		stopChan <- struct{}{}
-	}()
-
-	// start progress consumer
-	go func() {
-		ticker := time.NewTicker(5 * time.Second)
-		for {
-			select {
-			case <-stopChan:
-				return
-			case <-ticker.C:
-				cacheProgress.Range(func(key, value any) bool {
-					v := value.(progress)
-					log.Infof("Cache %s at %d/%d", key, v[1], v[0])
-					return true
-				})
-			}
-		}
-	}()
-
-	return g.Wait()
-}
-
 var indexTimeout = 1 * time.Hour
 
 // CreateCaches updates or creates all registered indexes.
@@ -83,23 +30,27 @@ func (s *Server) CreateCaches(ctxParent context.Context) error {
 	ctx, cancel := context.WithTimeout(ctxParent, indexTimeout)
 	defer cancel()
 
-	cacheManager := cacheManager{
-		caches: map[string]cache{
-			"Systems": s.systemCache,
-			"Fleet":   s.fleetCache,
-		},
+	err := s.worker.AddAndWait(ctx, "create-system-cache", func(ctx context.Context, progressChan chan<- float64) error {
+		return s.systemCache.Create(ctx, s, progressChan)
+	})
+	if err != nil {
+		return err
+	}
+	err = s.worker.AddAndWait(ctx, "create-fleet-cache", func(ctx context.Context, progressChan chan<- float64) error {
+		return s.fleetCache.Create(ctx, s, progressChan)
+	})
+	if err != nil {
+		return err
 	}
 
-	return cacheManager.Create(ctx, s)
+	return nil
 }
 
 // SystemCache is a cache for galaxy systems.
 type SystemCache struct{}
 
-var _ cache = SystemCache{}
-
 // Create populates the contents of the `systems` table with results from the API.
-func (c SystemCache) Create(ctx context.Context, srv *Server, progressFunc progressFunc) error {
+func (c SystemCache) Create(ctx context.Context, srv *Server, progressChan chan<- float64) error {
 	// check if already exists
 	if v, err := srv.query.HasSystemsRows(ctx); err != nil {
 		return err
@@ -112,11 +63,11 @@ func (c SystemCache) Create(ctx context.Context, srv *Server, progressFunc progr
 		return err
 	}
 
-	err = c.populateWithTx(ctx, srv, tx, progressFunc)
+	err = c.populateWithTx(ctx, srv, tx, progressChan)
 	return errors.Join(err, tx.Done(err))
 }
 
-func (c SystemCache) populateWithTx(ctx context.Context, srv *Server, tx query.Tx, progressFunc progressFunc) error {
+func (c SystemCache) populateWithTx(ctx context.Context, srv *Server, tx query.Tx, progressChan chan<- float64) error {
 	systemsIter := getPaginated[*api.System](
 		ctx,
 		srv,
@@ -143,7 +94,7 @@ func (c SystemCache) populateWithTx(ctx context.Context, srv *Server, tx query.T
 		}
 		total = systemPage.Total
 		n += len(systemPage.Items)
-		progressFunc(total, n)
+		progressChan <- float64(n) / float64(total)
 	}
 	return nil
 }
@@ -235,11 +186,9 @@ type FleetCache struct {
 	Ships []*pb.Ship
 }
 
-var _ cache = (*FleetCache)(nil)
-
 // Create (re)populates the cache from the API.
-func (c *FleetCache) Create(ctx context.Context, srv *Server, progressFunc progressFunc) error {
-	progressFunc(1, 0)
+func (c *FleetCache) Create(ctx context.Context, srv *Server, progressChan chan<- float64) error {
+	progressChan <- 0
 	shipsIter := getPaginated[*api.Ship](
 		ctx,
 		srv,
@@ -256,7 +205,7 @@ func (c *FleetCache) Create(ctx context.Context, srv *Server, progressFunc progr
 	if c.Ships, err = convert.ConvertShips(ships); err != nil {
 		return fmt.Errorf("converting ship: %w", err)
 	}
-	progressFunc(1, 1)
+	progressChan <- 1
 	return nil
 }
 
