@@ -8,10 +8,10 @@ import (
 	"net"
 	"time"
 
-	"github.com/go-resty/resty/v2"
-	log "github.com/sirupsen/logrus"
 	"github.com/stnokott/spacetrader-server/internal/api"
+	"github.com/stnokott/spacetrader-server/internal/cache"
 	"github.com/stnokott/spacetrader-server/internal/convert"
+	"github.com/stnokott/spacetrader-server/internal/log"
 	"github.com/stnokott/spacetrader-server/internal/worker"
 	"google.golang.org/grpc"
 
@@ -21,14 +21,17 @@ import (
 	pb "github.com/stnokott/spacetrader-server/internal/proto"
 )
 
+var logger = log.ForComponent("server")
+
 // Server performs requests to the SpaceTraders API and offers them via gRPC.
 type Server struct {
-	api   *resty.Client
-	db    *sql.DB
-	query *query.Queries
+	api     *api.Client
+	db      *sql.DB
+	queries *query.Queries
+	// TODO: check if api, db or query can be removed
 
-	systemCache SystemCache
-	fleetCache  *FleetCache
+	systemCache cache.SystemCache
+	fleetCache  *cache.FleetCache
 
 	worker *worker.Worker
 
@@ -37,8 +40,7 @@ type Server struct {
 
 // New creates and returns a new Client instance.
 func New(baseURL string, token string, dbFile string) (*Server, error) {
-	r := resty.New()
-	configureRestyClient(r, baseURL, token)
+	client := api.NewClient(baseURL, token)
 
 	db, err := newDB(dbFile)
 	if err != nil {
@@ -56,19 +58,19 @@ func New(baseURL string, token string, dbFile string) (*Server, error) {
 	worker.Start(context.TODO(), true)
 
 	return &Server{
-		api:   r,
-		db:    db,
-		query: q,
+		api:     client,
+		db:      db,
+		queries: q,
 
-		systemCache: SystemCache{},
-		fleetCache:  &FleetCache{},
+		systemCache: cache.NewSystemCache(client, db, q),
+		fleetCache:  cache.NewFleetCache(client),
 		worker:      worker,
 	}, nil
 }
 
 // Close terminates all underlying connections.
 func (s *Server) Close() error {
-	return errors.Join(s.query.Close(), s.db.Close())
+	return errors.Join(s.queries.Close(), s.db.Close())
 }
 
 // Listen starts the gRPC server on the specified port.
@@ -84,7 +86,7 @@ func (s *Server) Listen(port int) error {
 		grpc.ChainUnaryInterceptor(onGrpcUnary),
 	)
 	pb.RegisterSpacetraderServer(srv, s)
-	log.WithField("port", port).Infof("gRPC server listening")
+	logger.Infof("gRPC server listening on port %d", port)
 	if err := srv.Serve(lis); err != nil {
 		return fmt.Errorf("TCP serve: %w", err)
 	}
@@ -92,21 +94,52 @@ func (s *Server) Listen(port int) error {
 }
 
 func onGrpcStream(srv any, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-	log.Debugf("gRPC call to %s", info.FullMethod)
+	logger.Debugf("gRPC call to %s", info.FullMethod)
 	err := handler(srv, stream)
 	if err != nil {
-		log.Errorf("gRPC error streaming %s: %v", info.FullMethod, err)
+		logger.Errorf("gRPC error streaming %s: %v", info.FullMethod, err)
 	}
 	return err
 }
 
 func onGrpcUnary(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
-	log.Debugf("gRPC call to %s", info.FullMethod)
+	logger.Debugf("gRPC call to %s", info.FullMethod)
 	resp, err = handler(ctx, req)
 	if err != nil {
-		log.Errorf("gRPC error unary %s: %v", info.FullMethod, err)
+		logger.Errorf("gRPC error unary %s: %v", info.FullMethod, err)
 	}
 	return
+}
+
+// TODO: write functions for querying API stuff (e.g. getSystem)
+// which wrap API calls, but also handle caching.
+// So when calling getSystem and the queried system doesn't exist in the cache yet,
+// we query the API and write the result to the cache.
+
+var indexTimeout = 1 * time.Hour
+
+// CreateCaches updates or creates all registered indexes.
+// It should be called once at the beginning of the program loop.
+func (s *Server) CreateCaches(ctxParent context.Context) error {
+	logger.Info("creating caches")
+
+	ctx, cancel := context.WithTimeout(ctxParent, indexTimeout)
+	defer cancel()
+
+	err := s.worker.AddAndWait(ctx, "create-system-cache", func(ctx context.Context, progressChan chan<- float64) error {
+		return s.systemCache.Create(ctx, progressChan)
+	})
+	if err != nil {
+		return err
+	}
+	err = s.worker.AddAndWait(ctx, "create-fleet-cache", func(ctx context.Context, progressChan chan<- float64) error {
+		return s.fleetCache.Create(ctx, progressChan)
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Ping is used by clients to ensure this server is online.
@@ -117,7 +150,7 @@ func (s *Server) Ping(_ context.Context, _ *emptypb.Empty) (*emptypb.Empty, erro
 // GetServerStatus returns the current server status and some statistics.
 func (s *Server) GetServerStatus(ctx context.Context, _ *emptypb.Empty) (*pb.ServerStatus, error) {
 	result := new(api.Status)
-	if err := s.get(ctx, result, "/"); err != nil {
+	if err := s.api.Get(ctx, result, "/"); err != nil {
 		return nil, err
 	}
 
@@ -131,7 +164,7 @@ func (s *Server) GetCurrentAgent(ctx context.Context, _ *emptypb.Empty) (*pb.Age
 		// info in a useless "data" field.
 		Data api.Agent `json:"data"`
 	})
-	if err := s.get(ctx, result, "/my/agent"); err != nil {
+	if err := s.api.Get(ctx, result, "/my/agent"); err != nil {
 		return nil, err
 	}
 
@@ -154,7 +187,7 @@ func (s *Server) GetShipCoordinates(ctx context.Context, req *pb.GetShipCoordina
 	if err != nil {
 		return nil, err
 	}
-	system, err := s.query.GetSystemByName(ctx, ship.CurrentLocation.System)
+	system, err := s.queries.GetSystemByName(ctx, ship.CurrentLocation.System)
 	if err != nil {
 		return nil, err
 	}
@@ -168,7 +201,7 @@ func (s *Server) GetSystemsInRect(rect *pb.Rect, stream pb.Spacetrader_GetSystem
 	ctx, cancel := context.WithTimeout(stream.Context(), 5*time.Second)
 	defer cancel()
 
-	rows, err := s.query.GetSystemsInRect(ctx, query.GetSystemsInRectParams{
+	rows, err := s.queries.GetSystemsInRect(ctx, query.GetSystemsInRectParams{
 		XMin: int64(rect.Start.X),
 		YMin: int64(rect.Start.Y),
 		XMax: int64(rect.End.X),

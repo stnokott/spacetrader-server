@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"time"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/stnokott/spacetrader-server/internal/log"
 	"github.com/stnokott/spacetrader-server/internal/syncx"
 	"go.uber.org/atomic"
 )
+
+var logger = log.ForComponent("worker")
 
 // Worker maintains the job queue and processes jobs.
 type Worker struct {
@@ -130,24 +132,23 @@ func (w *Worker) logState(ctx context.Context) {
 		case <-ticker.C:
 			currentJob := w.currentJob.Load()
 			if currentJob != "" {
-				log.Debugf("current job <%s> progress: %3.f%%", currentJob, w.currentProgress.Load()*100)
+				logger.Infof("<%s> progress: %3.f%%", currentJob, w.currentProgress.Load()*100)
 			} else {
-				log.Debug("worker currently has no jobs")
+				logger.Debug("no jobs")
 			}
 		}
 	}
 }
 
 func (w *Worker) process(ctx context.Context, item queueItem, progressChan chan<- float64, doneChan chan<- struct{}) {
-	log.Debugf("consuming job %s", item.Name)
 	w.currentJob.Store(item.Name)
 
-	log.Debugf("running job <%s>", item.Name)
+	logger.Infof("<%s> started", item.Name)
 	err := item.Job(ctx, progressChan)
 	if err != nil {
-		log.Debugf("finished job <%s> with err %v", item.Name, err)
+		logger.Warnf("<%s> finished with err %v", item.Name, err)
 	} else {
-		log.Debugf("finished job <%s>", item.Name)
+		logger.Infof("<%s> finished", item.Name)
 	}
 
 	// only clear the item from the index when processing is done (deferred),

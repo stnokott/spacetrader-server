@@ -3,14 +3,15 @@ package main
 import (
 	"testing"
 
+	"github.com/stnokott/spacetrader-server/internal/cache"
 	pb "github.com/stnokott/spacetrader-server/internal/proto"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestServerShipsPerSystem(t *testing.T) {
 	server := &Server{
-		fleetCache: &FleetCache{
-			[]*pb.Ship{
+		fleetCache: &cache.FleetCache{
+			Ships: []*pb.Ship{
 				{CurrentLocation: &pb.Ship_Location{System: "Foo"}},
 				{CurrentLocation: &pb.Ship_Location{System: "Bar"}},
 				{CurrentLocation: &pb.Ship_Location{System: "Foo"}},

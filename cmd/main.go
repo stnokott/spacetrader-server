@@ -3,58 +3,47 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/stnokott/spacetrader-server/internal/config"
 )
 
 const (
-	environment = "debug" // TODO: configure from env
-	baseURL     = "https://api.spacetraders.io/v2/"
+	baseURL = "https://api.spacetraders.io/v2/"
 )
 
-func initLogger() {
-	if environment == "prod" {
-		log.SetLevel(log.InfoLevel)
-	} else {
-		log.SetLevel(log.DebugLevel)
-	}
-	log.SetFormatter(&log.TextFormatter{
-		ForceColors:            true,
-		DisableTimestamp:       false,
-		FullTimestamp:          true,
-		DisableLevelTruncation: true,
-		PadLevelText:           true,
-	})
-	log.SetOutput(os.Stdout)
-}
-
 func main() {
-	initLogger()
+	var err error
+	defer func() {
+		fmt.Println(err)
+		if err != nil {
+			os.Exit(1)
+		}
+	}()
 
 	// load config
-	cfg, err := config.Load()
+	var cfg *config.Config
+	cfg, err = config.Load()
 	if err != nil {
-		log.Error(err)
+		config.PrintUsage(os.Stderr)
 		return
 	}
 
 	// create server
-	s, err := New(baseURL, cfg.AgentToken, "./galaxy.db")
+	var s *Server
+	s, err = New(baseURL, cfg.AgentToken, "./galaxy.db")
 	if err != nil {
-		log.Error(err)
 		return
 	}
 	defer func() {
 		_ = s.Close()
 	}()
 	// TODO: update in background, return ETA if queried
-	if err := s.CreateCaches(context.Background()); err != nil {
-		log.Error(err)
+	if err = s.CreateCaches(context.Background()); err != nil {
 		return
 	}
 
-	log.Fatal(s.Listen(55555)) // TODO: configure port from env
+	logger.Fatal(s.Listen(55555)) // TODO: configure port from env
 	// TODO: graceful shutdown
 }
