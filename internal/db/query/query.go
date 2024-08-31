@@ -7,8 +7,10 @@ import (
 	"errors"
 	"fmt"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/stnokott/spacetrader-server/internal/log"
 )
+
+var logger = log.ForComponent("db")
 
 // Tx wraps the sqlc-generated queries into a transaction.
 type Tx struct {
@@ -21,11 +23,11 @@ type Tx struct {
 //
 // The caller should call Done() when the transaction is no longer needed.
 func WithTx(ctx context.Context, db *sql.DB, q *Queries) (Tx, error) {
-	log.Debug("creating transaction")
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return Tx{}, fmt.Errorf("creating transaction: %w", err)
 	}
+	logger.Debug("transaction created")
 
 	return Tx{
 		Queries: q.WithTx(tx),
@@ -40,17 +42,17 @@ func WithTx(ctx context.Context, db *sql.DB, q *Queries) (Tx, error) {
 // If the rollback fails, the original error, joined with the rollback error, will be returned.
 func (t Tx) Done(err error) error {
 	if err != nil {
-		log.Debug("rolling transaction back")
+		logger.Debug("rolling transaction back")
 		errRollback := t.tx.Rollback()
 		if errRollback != nil && !errors.Is(errRollback, sql.ErrTxDone) {
-			log.Errorf("failed to rollback: %v", errRollback)
+			logger.Errorf("failed to rollback: %v", errRollback)
 		}
 		return errors.Join(err, errRollback)
 	}
 
-	log.Debug("committing transaction")
+	logger.Debug("committing transaction")
 	if errCommit := t.tx.Commit(); errCommit != nil {
-		log.Errorf("failed to commit: %v", errCommit)
+		logger.Errorf("failed to commit: %v", errCommit)
 		return errCommit
 	}
 	return nil

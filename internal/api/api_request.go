@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"context"
@@ -9,14 +9,21 @@ import (
 	"time"
 
 	"github.com/go-resty/resty/v2"
-	log "github.com/sirupsen/logrus"
-	"github.com/stnokott/spacetrader-server/internal/api"
+	"github.com/stnokott/spacetrader-server/internal/log"
 	"go.uber.org/ratelimit"
 )
 
 // TODO: query /my/agent on startup to validate token
 
-func configureRestyClient(r *resty.Client, baseURL string, token string) {
+var logger = log.ForComponent("api")
+
+type Client struct {
+	r *resty.Client
+}
+
+func NewClient(baseURL string, token string) *Client {
+	r := resty.New()
+
 	r.
 		SetBaseURL(baseURL).
 		SetAuthToken(token).
@@ -25,13 +32,15 @@ func configureRestyClient(r *resty.Client, baseURL string, token string) {
 			"User-Agent": "github.com/stnokott/spacetrader-server",
 		}).
 		SetTimeout(10 * time.Second). // TODO: allow configuring from env
-		SetLogger(log.StandardLogger()).
+		SetLogger(logger).
 		SetRetryAfter(retryAfter).
 		SetRetryCount(5).
 		AddRetryCondition(func(r *resty.Response, _ error) bool {
 			return r.StatusCode() == http.StatusTooManyRequests
 		}).
 		OnBeforeRequest(beforeRequest())
+
+	return &Client{r}
 }
 
 // retryAfter handles 429 rate-limiting responses and configures the wait time accordingly.
@@ -46,7 +55,7 @@ func retryAfter(_ *resty.Client, resp *resty.Response) (time.Duration, error) {
 			return 0, fmt.Errorf("parsing x-ratelimit-reset value: %w", err)
 		}
 		wait := t.Sub(time.Now().UTC())
-		log.WithField("wait", wait).Debug("ratelimit exceeded")
+		logger.Debugf("ratelimit exceeded, waiting %s", wait)
 		return wait, nil
 	}
 	return 5 * time.Second, nil
@@ -57,7 +66,7 @@ func beforeRequest() func(*resty.Client, *resty.Request) error {
 	rateLimiter := newRateLimiter()
 	return func(c *resty.Client, r *resty.Request) error {
 		_ = rateLimiter.Take()
-		log.Debugf("%s %s", r.Method, r.URL)
+		logger.Debugf("%s %s", r.Method, r.URL)
 		return nil
 	}
 }
@@ -67,14 +76,14 @@ func newRateLimiter() ratelimit.Limiter {
 	return ratelimit.New(2, ratelimit.Per(1*time.Second))
 }
 
-// get is a generic utility function for reducing boilerplate client code.
-func (s *Server) get(ctx context.Context, dst any, path string) (err error) {
+// Get is a generic utility function for reducing boilerplate client code.
+func (c *Client) Get(ctx context.Context, dst any, path string) (err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("%s: %w", path, err)
 		}
 	}()
-	req := s.api.R().SetResult(dst)
+	req := c.r.R().SetResult(dst)
 	var resp *resty.Response
 	resp, err = req.SetContext(ctx).Get(path)
 	if err != nil {
@@ -94,16 +103,16 @@ type pageResult[T any] struct {
 	Total int
 }
 
-// getPaginated returns an iterator, traversing all pages of a paginated endpoint.
+// GetPaginated returns an iterator, traversing all pages of a paginated endpoint.
 // Each iteration yields one page of data.
 //
 // Pass a function pageFn which assembles the URL path (without the base URL) depending on
 // the current page.
 //
 // The iterator will stop when an error is returned.
-func getPaginated[T any](
+func GetPaginated[T any](
 	ctx context.Context,
-	s *Server,
+	c *Client,
 	pageFn pageFunc,
 ) iter.Seq2[*pageResult[T], error] {
 	// total expected number of items
@@ -116,10 +125,10 @@ func getPaginated[T any](
 			urlPath := pageFn(page)
 
 			result := new(struct {
-				Data []T       `json:"data"`
-				Meta *api.Meta `json:"meta"`
+				Data []T   `json:"data"`
+				Meta *Meta `json:"meta"`
 			})
-			if err := s.get(ctx, result, urlPath); err != nil {
+			if err := c.Get(ctx, result, urlPath); err != nil {
 				_ = yield(nil, err)
 				return
 			}
@@ -137,13 +146,13 @@ func getPaginated[T any](
 				return
 			}
 			n += len(result.Data)
-			log.Debugf("queried %03.0f%% (%d/%d) of type %T", float64(n)/float64(total)*100, n, total, *new(T))
+			logger.Debugf("queried %03.0f%% (%d/%d) of type %T", float64(n)/float64(total)*100, n, total, *new(T))
 		}
 	}
 }
 
-// collectPages combines all pages of an iterator into one slice, returning any error encountered on any page.
-func collectPages[V any](seq iter.Seq2[*pageResult[V], error]) ([]V, error) {
+// CollectPages combines all pages of an iterator into one slice, returning any error encountered on any page.
+func CollectPages[V any](seq iter.Seq2[*pageResult[V], error]) ([]V, error) {
 	var out []V
 
 	i := 0

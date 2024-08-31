@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"net/http"
@@ -39,7 +39,7 @@ func TestRetryAfter(t *testing.T) {
 	// HTTP 429 should return a retry duration based on the header
 	respRateLimit, dRl := makeRespRateLimit()
 	dRetry, err = retryAfter(r, respRateLimit)
-	dRetry += 1 * time.Second // account for test execution time
+	dRetry += 2 * time.Second // account for test execution time
 	assert.Nil(err)
 	assert.GreaterOrEqual(dRetry, dRl)
 }

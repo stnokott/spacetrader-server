@@ -2,14 +2,13 @@
 package syncx
 
 import (
-	"github.com/ietxaniz/delock"
-	log "github.com/sirupsen/logrus"
+	"sync"
 )
 
 // Map wraps Go's builtin map with a mutex.
 type Map[K comparable, V any] struct {
 	mp    map[K]V
-	mutex delock.RWMutex
+	mutex sync.RWMutex
 }
 
 // NewMap creates and returns a new map instance.
@@ -21,55 +20,40 @@ func NewMap[K comparable, V any]() *Map[K, V] {
 
 // Len is like len(map).
 func (m *Map[K, V]) Len() int {
-	id, err := m.mutex.RLock()
-	if err != nil {
-		log.Fatalf("deadlock: %v", err)
-	}
+	m.mutex.RLock()
 	n := len(m.mp)
-	m.mutex.RUnlock(id)
+	m.mutex.RUnlock()
 	return n
 }
 
 // Get is like map[k].
 func (m *Map[K, V]) Get(k K) (V, bool) {
-	id, err := m.mutex.RLock()
-	if err != nil {
-		log.Fatalf("deadlock: %v", err)
-	}
+	m.mutex.RLock()
 	v, ok := m.mp[k]
-	m.mutex.RUnlock(id)
+	m.mutex.RUnlock()
 	return v, ok
 }
 
 // Set is like map[k] = v.
 func (m *Map[K, V]) Set(k K, v V) {
-	id, err := m.mutex.Lock()
-	if err != nil {
-		log.Fatalf("deadlock: %v", err)
-	}
+	m.mutex.Lock()
 	m.mp[k] = v
-	m.mutex.Unlock(id)
+	m.mutex.Unlock()
 }
 
 // Delete is like delete(map, k).
 func (m *Map[K, V]) Delete(k K) {
-	id, err := m.mutex.Lock()
-	if err != nil {
-		log.Fatalf("deadlock: %v", err)
-	}
+	m.mutex.Lock()
 	delete(m.mp, k)
-	m.mutex.Unlock(id)
+	m.mutex.Unlock()
 }
 
 // Pop returns the value and deletes it afterwards.
 // This should be preferred over calling Get() and Delete() sequentially to avoid additional mutex locks.
 func (m *Map[K, V]) Pop(k K) (V, bool) {
-	id, err := m.mutex.Lock()
-	if err != nil {
-		log.Fatalf("deadlock: %v", err)
-	}
+	m.mutex.Lock()
 	v, ok := m.mp[k]
 	delete(m.mp, k)
-	m.mutex.Unlock(id)
+	m.mutex.Unlock()
 	return v, ok
 }

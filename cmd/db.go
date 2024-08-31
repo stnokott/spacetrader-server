@@ -22,5 +22,5 @@ func newDB(file string) (*sql.DB, error) {
 }
 
 func (s *Server) withTx(ctx context.Context) (query.Tx, error) {
-	return query.WithTx(ctx, s.db, s.query)
+	return query.WithTx(ctx, s.db, s.queries)
 }
