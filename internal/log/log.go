@@ -4,11 +4,11 @@ package log
 import (
 	"bytes"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
 	"github.com/logrusorgru/aurora"
+	"github.com/mattn/go-colorable"
 	"github.com/sirupsen/logrus"
 )
 
@@ -29,7 +29,7 @@ func ForComponent(name string) *logrus.Entry {
 	}
 	// use custom formatter
 	l.SetFormatter(defaultFormatter)
-	l.SetOutput(os.Stdout)
+	l.SetOutput(colorable.NewColorableStdout())
 
 	// set component name via field
 	e := l.WithField(_componentField, name)
@@ -63,7 +63,7 @@ var levelColors = map[logrus.Level]aurora.Color{
 	logrus.FatalLevel: aurora.RedBg | aurora.WhiteFg,
 	logrus.ErrorLevel: aurora.RedBg | aurora.WhiteFg,
 	logrus.WarnLevel:  aurora.MagentaBg | aurora.BrightBg | aurora.WhiteFg,
-	logrus.InfoLevel:  aurora.WhiteFg,
+	logrus.InfoLevel:  aurora.BlueBg | aurora.WhiteFg,
 	logrus.DebugLevel: aurora.WhiteFg | aurora.FaintFm,
 	logrus.TraceLevel: aurora.WhiteFg | aurora.FaintFm,
 }
@@ -117,7 +117,7 @@ func (f *componentFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	buf.WriteByte(' ')
 	buf.WriteString(entry.Time.Format(time.DateTime))
 	buf.WriteByte(' ')
-	buf.WriteString(aurora.Index(componentColors[componentName], "["+componentName+"]").Bold().String())
+	buf.WriteString(aurora.Index(componentColors[componentName], "["+componentName+"]").String())
 	// space padding
 	if len(componentName) < f.MaxComponentLength {
 		buf.WriteString(strings.Repeat(" ", f.MaxComponentLength-len(componentName)))
