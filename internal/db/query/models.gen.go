@@ -4,10 +4,9 @@
 
 package query
 
-type Ship struct {
-	Symbol          string
-	CurrentSystem   string
-	CurrentWaypoint string
+type JumpGate struct {
+	Waypoint   string
+	ConnectsTo string
 }
 
 type System struct {
@@ -16,4 +15,13 @@ type System struct {
 	Y        int64
 	Type     string
 	Factions string
+}
+
+type Waypoint struct {
+	Symbol string
+	System string
+	Orbits interface{}
+	X      int64
+	Y      int64
+	Type   string
 }

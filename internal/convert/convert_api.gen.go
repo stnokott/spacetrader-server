@@ -320,6 +320,20 @@ func ConvertShipRole(source api.ShipRole) (proto.Ship_Role, error) {
 	}
 	return protoShip_Role, nil
 }
+func ConvertShips(source []*api.Ship) ([]*proto.Ship, error) {
+	var pProtoShipList []*proto.Ship
+	if source != nil {
+		pProtoShipList = make([]*proto.Ship, len(source))
+		for i := 0; i < len(source); i++ {
+			pProtoShip, err := ConvertShip(source[i])
+			if err != nil {
+				return nil, err
+			}
+			pProtoShipList[i] = pProtoShip
+		}
+	}
+	return pProtoShipList, nil
+}
 func ConvertStatus(source *api.Status) *proto.ServerStatus {
 	var pProtoServerStatus *proto.ServerStatus
 	if source != nil {

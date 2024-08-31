@@ -1,7 +1,8 @@
 # SQLite
 *.db
+*.db-journal
 
-.env
+*.env
 
 dist
 

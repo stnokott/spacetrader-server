@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 
 	"github.com/stnokott/spacetrader-server/internal/db"
+	"github.com/stnokott/spacetrader-server/internal/db/query"
 	_ "modernc.org/sqlite" // SQLite bindings
 )
 
@@ -17,4 +19,8 @@ func newDB(file string) (*sql.DB, error) {
 		return nil, err
 	}
 	return conn, nil
+}
+
+func (s *Server) withTx(ctx context.Context) (query.Tx, error) {
+	return query.WithTx(ctx, s.db, s.query)
 }

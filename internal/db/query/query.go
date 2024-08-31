@@ -42,7 +42,7 @@ func (t Tx) Done(err error) error {
 	if err != nil {
 		log.Debug("rolling transaction back")
 		errRollback := t.tx.Rollback()
-		if errRollback != nil {
+		if errRollback != nil && !errors.Is(errRollback, sql.ErrTxDone) {
 			log.Errorf("failed to rollback: %v", errRollback)
 		}
 		return errors.Join(err, errRollback)

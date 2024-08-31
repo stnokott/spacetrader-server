@@ -30,17 +30,26 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getSystemsInRectStmt, err = db.PrepareContext(ctx, getSystemsInRect); err != nil {
 		return nil, fmt.Errorf("error preparing query GetSystemsInRect: %w", err)
 	}
-	if q.insertShipStmt, err = db.PrepareContext(ctx, insertShip); err != nil {
-		return nil, fmt.Errorf("error preparing query InsertShip: %w", err)
+	if q.hasSystemsRowsStmt, err = db.PrepareContext(ctx, hasSystemsRows); err != nil {
+		return nil, fmt.Errorf("error preparing query HasSystemsRows: %w", err)
+	}
+	if q.insertJumpGateStmt, err = db.PrepareContext(ctx, insertJumpGate); err != nil {
+		return nil, fmt.Errorf("error preparing query InsertJumpGate: %w", err)
 	}
 	if q.insertSystemStmt, err = db.PrepareContext(ctx, insertSystem); err != nil {
 		return nil, fmt.Errorf("error preparing query InsertSystem: %w", err)
 	}
-	if q.truncateShipsStmt, err = db.PrepareContext(ctx, truncateShips); err != nil {
-		return nil, fmt.Errorf("error preparing query TruncateShips: %w", err)
+	if q.insertWaypointStmt, err = db.PrepareContext(ctx, insertWaypoint); err != nil {
+		return nil, fmt.Errorf("error preparing query InsertWaypoint: %w", err)
+	}
+	if q.truncateJumpGatesStmt, err = db.PrepareContext(ctx, truncateJumpGates); err != nil {
+		return nil, fmt.Errorf("error preparing query TruncateJumpGates: %w", err)
 	}
 	if q.truncateSystemsStmt, err = db.PrepareContext(ctx, truncateSystems); err != nil {
 		return nil, fmt.Errorf("error preparing query TruncateSystems: %w", err)
+	}
+	if q.truncateWaypointsStmt, err = db.PrepareContext(ctx, truncateWaypoints); err != nil {
+		return nil, fmt.Errorf("error preparing query TruncateWaypoints: %w", err)
 	}
 	return &q, nil
 }
@@ -57,9 +66,14 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getSystemsInRectStmt: %w", cerr)
 		}
 	}
-	if q.insertShipStmt != nil {
-		if cerr := q.insertShipStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing insertShipStmt: %w", cerr)
+	if q.hasSystemsRowsStmt != nil {
+		if cerr := q.hasSystemsRowsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing hasSystemsRowsStmt: %w", cerr)
+		}
+	}
+	if q.insertJumpGateStmt != nil {
+		if cerr := q.insertJumpGateStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing insertJumpGateStmt: %w", cerr)
 		}
 	}
 	if q.insertSystemStmt != nil {
@@ -67,14 +81,24 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing insertSystemStmt: %w", cerr)
 		}
 	}
-	if q.truncateShipsStmt != nil {
-		if cerr := q.truncateShipsStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing truncateShipsStmt: %w", cerr)
+	if q.insertWaypointStmt != nil {
+		if cerr := q.insertWaypointStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing insertWaypointStmt: %w", cerr)
+		}
+	}
+	if q.truncateJumpGatesStmt != nil {
+		if cerr := q.truncateJumpGatesStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing truncateJumpGatesStmt: %w", cerr)
 		}
 	}
 	if q.truncateSystemsStmt != nil {
 		if cerr := q.truncateSystemsStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing truncateSystemsStmt: %w", cerr)
+		}
+	}
+	if q.truncateWaypointsStmt != nil {
+		if cerr := q.truncateWaypointsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing truncateWaypointsStmt: %w", cerr)
 		}
 	}
 	return err
@@ -114,25 +138,31 @@ func (q *Queries) queryRow(ctx context.Context, stmt *sql.Stmt, query string, ar
 }
 
 type Queries struct {
-	db                   DBTX
-	tx                   *sql.Tx
-	getSystemByNameStmt  *sql.Stmt
-	getSystemsInRectStmt *sql.Stmt
-	insertShipStmt       *sql.Stmt
-	insertSystemStmt     *sql.Stmt
-	truncateShipsStmt    *sql.Stmt
-	truncateSystemsStmt  *sql.Stmt
+	db                    DBTX
+	tx                    *sql.Tx
+	getSystemByNameStmt   *sql.Stmt
+	getSystemsInRectStmt  *sql.Stmt
+	hasSystemsRowsStmt    *sql.Stmt
+	insertJumpGateStmt    *sql.Stmt
+	insertSystemStmt      *sql.Stmt
+	insertWaypointStmt    *sql.Stmt
+	truncateJumpGatesStmt *sql.Stmt
+	truncateSystemsStmt   *sql.Stmt
+	truncateWaypointsStmt *sql.Stmt
 }
 
 func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 	return &Queries{
-		db:                   tx,
-		tx:                   tx,
-		getSystemByNameStmt:  q.getSystemByNameStmt,
-		getSystemsInRectStmt: q.getSystemsInRectStmt,
-		insertShipStmt:       q.insertShipStmt,
-		insertSystemStmt:     q.insertSystemStmt,
-		truncateShipsStmt:    q.truncateShipsStmt,
-		truncateSystemsStmt:  q.truncateSystemsStmt,
+		db:                    tx,
+		tx:                    tx,
+		getSystemByNameStmt:   q.getSystemByNameStmt,
+		getSystemsInRectStmt:  q.getSystemsInRectStmt,
+		hasSystemsRowsStmt:    q.hasSystemsRowsStmt,
+		insertJumpGateStmt:    q.insertJumpGateStmt,
+		insertSystemStmt:      q.insertSystemStmt,
+		insertWaypointStmt:    q.insertWaypointStmt,
+		truncateJumpGatesStmt: q.truncateJumpGatesStmt,
+		truncateSystemsStmt:   q.truncateSystemsStmt,
+		truncateWaypointsStmt: q.truncateWaypointsStmt,
 	}
 }

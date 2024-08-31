@@ -103,7 +103,7 @@ func TestGenerateSystemName(t *testing.T) {
 				total: 10,
 				i:     5,
 			},
-			want: "05",
+			want: "SYSTEM-05",
 		},
 		{
 			name: "double start",
@@ -111,7 +111,7 @@ func TestGenerateSystemName(t *testing.T) {
 				total: 50,
 				i:     0,
 			},
-			want: "00",
+			want: "SYSTEM-00",
 		},
 		{
 			name: "double middle",
@@ -119,7 +119,7 @@ func TestGenerateSystemName(t *testing.T) {
 				total: 50,
 				i:     1,
 			},
-			want: "01",
+			want: "SYSTEM-01",
 		},
 		{
 			name: "triple",
@@ -127,7 +127,7 @@ func TestGenerateSystemName(t *testing.T) {
 				total: 100,
 				i:     29,
 			},
-			want: "029",
+			want: "SYSTEM-029",
 		},
 	}
 	for _, tt := range tests {

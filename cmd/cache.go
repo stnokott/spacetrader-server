@@ -2,12 +2,12 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/stnokott/spacetrader-server/internal/api"
 	"github.com/stnokott/spacetrader-server/internal/convert"
@@ -15,207 +15,208 @@ import (
 	pb "github.com/stnokott/spacetrader-server/internal/proto"
 )
 
-var buildSystemIndexTimeout = 20 * time.Minute
+// TODO: write functions for querying API stuff (e.g. getSystem)
+// which wrap API calls, but also handle caching.
+// So when calling getSystem and the queried system doesn't exist in the cache yet,
+// we query the API and write the result to the cache.
 
-// UpdateSystemIndex queries all systems from the API and writes them to the DB.
-// This index can be used later to query systems quickly without relying on the API.
-// This approach is valid since systems are expected to be static.
-//
-// This function is blocking.
-func (s *Server) UpdateSystemIndex(force bool) error {
-	log.WithField("timeout", buildSystemIndexTimeout).Info("building system index")
+var indexTimeout = 1 * time.Hour
 
-	ctx, cancel := context.WithTimeout(context.Background(), buildSystemIndexTimeout)
+// CreateCaches updates or creates all registered indexes.
+// It should be called once at the beginning of the program loop.
+func (s *Server) CreateCaches(ctxParent context.Context) error {
+	log.Info("creating caches")
+
+	ctx, cancel := context.WithTimeout(ctxParent, indexTimeout)
 	defer cancel()
 
-	if !force {
-		hasIndex, err := s.hasSystems(ctx)
-		if err != nil {
-			return fmt.Errorf("checking for system index: %w", err)
-		}
-		if hasIndex {
-			log.Info("system index exists, skipping refresh")
-			return nil
-		}
-	} else {
-		log.Info("forcing system index refresh")
-	}
-
-	return s.replaceSystems(ctx)
-}
-
-// hasSystems returns true if the systems table has at least one row, indicating
-// an existing Systems index.
-func (s *Server) hasSystems(ctx context.Context) (bool, error) {
-	result, err := s.db.QueryContext(ctx, "SELECT 1 FROM systems LIMIT 1")
+	err := s.worker.AddAndWait(ctx, "create-system-cache", func(ctx context.Context, progressChan chan<- float64) error {
+		return s.systemCache.Create(ctx, s, progressChan)
+	})
 	if err != nil {
-		return false, err
+		return err
 	}
-	hasNext := result.Next()
-	_ = result.Close()
-	return hasNext, nil
+	err = s.worker.AddAndWait(ctx, "create-fleet-cache", func(ctx context.Context, progressChan chan<- float64) error {
+		return s.fleetCache.Create(ctx, s, progressChan)
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-// replaceSystems replaces the contents of the `systems` table with results from the API.
-// It continues reading from systemChan until it is closed or ctx expires.
-func (s *Server) replaceSystems(ctx context.Context) (err error) {
-	log.Info("step 1/2: querying systems from API")
-	var systems []*api.System
-	systems, err = getPaginated[*api.System](
+// SystemCache is a cache for galaxy systems.
+type SystemCache struct{}
+
+// Create populates the contents of the `systems` table with results from the API.
+func (c SystemCache) Create(ctx context.Context, srv *Server, progressChan chan<- float64) error {
+	// check if already exists
+	if v, err := srv.query.HasSystemsRows(ctx); err != nil {
+		return err
+	} else if v != 0 {
+		return nil
+	}
+
+	tx, err := query.WithTx(ctx, srv.db, srv.query)
+	if err != nil {
+		return err
+	}
+
+	err = c.populateWithTx(ctx, srv, tx, progressChan)
+	return errors.Join(err, tx.Done(err))
+}
+
+func (c SystemCache) populateWithTx(ctx context.Context, srv *Server, tx query.Tx, progressChan chan<- float64) error {
+	systemsIter := getPaginated[*api.System](
 		ctx,
-		s,
+		srv,
 		func(page int) (urlPath string) {
 			return fmt.Sprintf("/systems?page=%d&limit=20", page)
 		},
 	)
-	if err != nil {
-		err = fmt.Errorf("querying systems: %w", err)
-		return
-	}
-
-	log.Infof("step 2/2: inserting %d systems into DB", len(systems))
-
-	tx, err := query.WithTx(ctx, s.db, s.query)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		err = tx.Done(err)
-	}()
 
 	// delete existing index
-	log.Debug("clearing existing system index")
-	if err = tx.TruncateSystems(ctx); err != nil {
-		return
+	log.Debug("clearing existing system/waypoint/jumpgate index")
+	if err := errors.Join(tx.TruncateSystems(ctx), tx.TruncateSystems(ctx), tx.TruncateJumpGates(ctx)); err != nil {
+		return fmt.Errorf("truncating system/waypoint/jumpgate index: %w", err)
 	}
 
-	defer func() {
-		if err == nil {
-			log.WithField("n", len(systems)).Info("system index replaced")
-		}
-	}()
+	total := 0
+	n := 0
 
-	for i, system := range systems {
-		select {
-		case <-ctx.Done():
-			err = fmt.Errorf("context exceeded after %d systems processed", i)
-			return
-		default:
+	for systemPage, errPage := range systemsIter {
+		if errPage != nil {
+			return fmt.Errorf("querying systems: %w", errPage)
 		}
+		if err := c.insertSystemPage(ctx, srv, tx, systemPage.Items); err != nil {
+			return err
+		}
+		total = systemPage.Total
+		n += len(systemPage.Items)
+		progressChan <- float64(n) / float64(total)
+	}
+	return nil
+}
+
+func (c SystemCache) insertSystemPage(ctx context.Context, srv *Server, tx query.Tx, page []*api.System) error {
+	for _, system := range page {
 		factions := make([]string, len(system.Factions))
-		for j, fac := range system.Factions {
-			factions[j] = string(fac.Symbol)
+		for i, fac := range system.Factions {
+			factions[i] = string(fac.Symbol)
 		}
 
-		if err = tx.InsertSystem(ctx, query.InsertSystemParams{
+		// TODO: use converter
+		if err := tx.InsertSystem(ctx, query.InsertSystemParams{
 			Symbol:   system.Symbol,
 			X:        int64(system.X),
 			Y:        int64(system.Y),
 			Type:     string(system.Type),
 			Factions: strings.Join(factions, ","),
 		}); err != nil {
-			err = fmt.Errorf("inserting system '%s': %v", system.Symbol, err)
-			return
+			return fmt.Errorf("inserting system '%s': %w", system.Symbol, err)
+		}
+
+		for _, wp := range system.Waypoints {
+			if err := c.insertWaypoint(ctx, system.Symbol, &wp, srv, tx); err != nil {
+				return err
+			}
 		}
 	}
-	return
+	return nil
 }
 
-// GetFleet returns the complete list of ships in the agent's posession.
-func (s *Server) GetFleet(ctx context.Context, _ *emptypb.Empty) (fleet *pb.Fleet, err error) {
-	var ships []*api.Ship
-	ships, err = getPaginated[*api.Ship](
+func (c SystemCache) insertWaypoint(ctx context.Context, system string, wp *api.SystemWaypoint, srv *Server, tx query.Tx) error {
+	if err := tx.InsertWaypoint(ctx, query.InsertWaypointParams{
+		Symbol: wp.Symbol,
+		System: system,
+		X:      int64(wp.X),
+		Y:      int64(wp.Y),
+		Orbits: wp.Orbits,
+		Type:   string(wp.Type),
+	}); err != nil {
+		return fmt.Errorf("inserting waypoint '%s': %w", wp.Symbol, err)
+	}
+
+	if wp.Type == api.JUMPGATE {
+		if err := c.populateJumpgateWaypoint(ctx, system, wp.Symbol, srv, tx); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (SystemCache) populateJumpgateWaypoint(ctx context.Context, system string, wp string, srv *Server, tx query.Tx) error {
+	// check if waypoint if charted (because if it isn't, we dont have jumpgate info)
+	// also, this information isn't available in the SystemWaypoint type, so we need to waste an API call for checking.
+	url := fmt.Sprintf("/systems/%s/waypoints/%s", system, wp)
+	waypoint := &struct {
+		Data api.Waypoint `json:"data"`
+	}{}
+	if err := srv.get(ctx, waypoint, url); err != nil {
+		return fmt.Errorf("querying waypoint: %w", err)
+	}
+	if waypoint.Data.Chart == nil {
+		// not charted => no jumpgate info => abort
+		return nil
+	}
+
+	url = fmt.Sprintf("/systems/%s/waypoints/%s/jump-gate", system, wp)
+	jump := &struct {
+		Data api.JumpGate `json:"data"`
+	}{}
+	if err := srv.get(ctx, jump, url); err != nil {
+		return fmt.Errorf("querying jump gate: %w", err)
+	}
+
+	for _, connection := range jump.Data.Connections {
+		if err := tx.InsertJumpGate(ctx, query.InsertJumpGateParams{
+			Waypoint:   wp,
+			ConnectsTo: connection,
+		}); err != nil {
+			return fmt.Errorf("inserting jumpgate: %w", err)
+		}
+	}
+	return nil
+}
+
+// FleetCache is an in-memory cache of all player-owned ships.
+type FleetCache struct {
+	Ships []*pb.Ship
+}
+
+// Create (re)populates the cache from the API.
+func (c *FleetCache) Create(ctx context.Context, srv *Server, progressChan chan<- float64) error {
+	progressChan <- 0
+	shipsIter := getPaginated[*api.Ship](
 		ctx,
-		s,
+		srv,
 		func(page int) (urlPath string) {
 			return fmt.Sprintf("/my/ships?page=%d&limit=20", page)
 		},
 	)
+
+	ships, err := collectPages(shipsIter)
 	if err != nil {
-		return nil, fmt.Errorf("querying ships: %w", err)
+		return fmt.Errorf("querying ships: %w", err)
 	}
 
-	converted := make([]*pb.Ship, len(ships))
-
-	tx, err := query.WithTx(ctx, s.db, s.query)
-	if err != nil {
-		return nil, err
+	if c.Ships, err = convert.ConvertShips(ships); err != nil {
+		return fmt.Errorf("converting ship: %w", err)
 	}
-	defer func() {
-		err = tx.Done(err)
-	}()
-
-	if err = tx.TruncateShips(ctx); err != nil {
-		return nil, fmt.Errorf("truncating ships table: %w", err)
-	}
-
-	for i, ship := range ships {
-		if err := tx.InsertShip(ctx, query.InsertShipParams{
-			Symbol:          ship.Symbol,
-			CurrentSystem:   ship.Nav.SystemSymbol,
-			CurrentWaypoint: ship.Nav.WaypointSymbol,
-		}); err != nil {
-			return nil, fmt.Errorf("inserting ship into DB: %w", err)
-		}
-
-		if converted[i], err = convert.ConvertShip(ship); err != nil {
-			return nil, fmt.Errorf("converting ship: %w", err)
-		}
-	}
-
-	fleet = &pb.Fleet{Ships: converted}
-	return
-}
-
-// GetShipCoordinates returns the x and y coordinates for a ship, identified by its name
-func (s *Server) GetShipCoordinates(ctx context.Context, req *pb.GetShipCoordinatesRequest) (*pb.GetShipCoordinatesResponse, error) {
-	result := new(struct {
-		Ship *api.Ship `json:"data"`
-	})
-	if err := s.get(ctx, result, "/my/ships/"+req.ShipName, 200); err != nil {
-		return nil, err
-	}
-
-	if result.Ship == nil {
-		return nil, fmt.Errorf("no ship '%s' found in fleet", req.ShipName)
-	}
-	systemName := result.Ship.Nav.SystemSymbol
-	system, err := s.query.GetSystemByName(ctx, systemName)
-	if err != nil {
-		return nil, err
-	}
-	return &pb.GetShipCoordinatesResponse{
-		X: int32(system.X), Y: int32(system.Y),
-	}, nil
-}
-
-// GetSystemsInRect streams all systems whose coordinates fall into rect.
-func (s *Server) GetSystemsInRect(rect *pb.Rect, stream pb.Spacetrader_GetSystemsInRectServer) error {
-	ctx, cancel := context.WithTimeout(stream.Context(), 5*time.Second)
-	defer cancel()
-
-	rows, err := s.query.GetSystemsInRect(ctx, query.GetSystemsInRectParams{
-		XMin: int64(rect.Start.X),
-		YMin: int64(rect.Start.Y),
-		XMax: int64(rect.End.X),
-		YMax: int64(rect.End.Y),
-	})
-	if err != nil {
-		return fmt.Errorf("querying systems within rect: %w", err)
-	}
-
-	for _, row := range rows {
-		system, err := convert.ConvertSystem(&row.System)
-		if err != nil {
-			return err
-		}
-
-		if err = stream.Send(&pb.GetSystemsInRectResponse{
-			System:    system,
-			ShipCount: int32(row.ShipCount),
-		}); err != nil {
-			return fmt.Errorf("sending system via gRPC: %w", err)
-		}
-	}
+	progressChan <- 1
 	return nil
+}
+
+// ShipByName returns a ship from the cache by its name.
+//
+// An error is returned when no ship with that name is found.
+func (c *FleetCache) ShipByName(name string) (*pb.Ship, error) {
+	for _, ship := range c.Ships {
+		if ship.Id == name {
+			return ship, nil
+		}
+	}
+	return nil, fmt.Errorf("no ship with name '%s' found", name)
 }

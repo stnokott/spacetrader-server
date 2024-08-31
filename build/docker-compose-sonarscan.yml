@@ -1,0 +1,8 @@
+services:
+  sonar:
+    image: sonarsource/sonar-scanner-cli:latest
+    environment:
+      - SONAR_HOST_URL=https://sonarcloud.io
+      - SONAR_TOKEN=${SONAR_TOKEN}
+    volumes:
+      - ../:/usr/src

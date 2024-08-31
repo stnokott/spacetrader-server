@@ -1,3 +1,6 @@
+-- name: HasSystemsRows :one
+SELECT EXISTS (SELECT 1 FROM systems) AS "exists";
+
 -- name: InsertSystem :exec
 INSERT INTO systems (
 	symbol, x, y, type, factions	
@@ -5,20 +8,17 @@ INSERT INTO systems (
 	?, ?, ?, ?, ?
 );
 
+-- name: TruncateSystems :exec
+DELETE FROM systems;
+
 -- name: GetSystemsInRect :many
 SELECT
-	sqlc.embed(systems), COUNT(ships.symbol) AS ship_count
+	symbol, x, y, type, factions
 FROM systems
-LEFT JOIN ships
-	ON ships.current_system = systems.symbol
 WHERE TRUE
 	AND x >= sqlc.arg(x_min) AND x <= sqlc.arg(x_max)
 	AND y >= sqlc.arg(y_min) AND y <= sqlc.arg(y_max)
-GROUP BY systems.symbol, x, y, type, factions
 ;
-
--- name: TruncateSystems :exec
-DELETE FROM systems;
 
 -- name: GetSystemByName :one
 SELECT x, y FROM systems

@@ -60,6 +60,20 @@
 			"icon": {
 				"id": "server"
 			}
+		},
+		{
+			"label": "Sonarscan",
+			"type": "docker-compose",
+			"dockerCompose": {
+				"up": {
+					"detached": false,
+				},
+				"envFile": "${workspaceFolder}/build/sonarscan.env",
+				"projectName": "sonarscan",
+				"files": [
+					"${workspaceFolder}/build/docker-compose-sonarscan.yml"
+				]
+			},
 		}
 	]
 }

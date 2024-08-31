@@ -2,6 +2,7 @@
 package main
 
 import (
+	"context"
 	"os"
 
 	log "github.com/sirupsen/logrus"
@@ -35,7 +36,7 @@ func main() {
 	// load config
 	cfg, err := config.Load()
 	if err != nil {
-		log.Error(cfg)
+		log.Error(err)
 		return
 	}
 
@@ -49,7 +50,7 @@ func main() {
 		_ = s.Close()
 	}()
 	// TODO: update in background, return ETA if queried
-	if err := s.UpdateSystemIndex(false); err != nil {
+	if err := s.CreateCaches(context.Background()); err != nil {
 		log.Error(err)
 		return
 	}
