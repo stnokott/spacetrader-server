@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/logrusorgru/aurora"
-	"github.com/sirupsen/logrus"
+	"github.com/stnokott/spacetrader-server/internal/log"
 )
 
 func main() {
@@ -15,7 +15,10 @@ func main() {
 	s := fmt.Sprintf(
 		"%s 2024-08-31 19:58:59 %s creating caches",
 		aurora.BgBlue("[INFO]").White(),
-		aurora.Index(89, "[server]"),
+		aurora.BgIndex(20, "[server]"),
 	)
-	logrus.Info(s)
+	fmt.Println(s)
+	logger := log.ForComponent("Foo")
+	logger.Info(s)
+	logger.Debug(s)
 }

@@ -63,7 +63,7 @@ var levelColors = map[logrus.Level]aurora.Color{
 	logrus.FatalLevel: aurora.RedBg | aurora.WhiteFg,
 	logrus.ErrorLevel: aurora.RedBg | aurora.WhiteFg,
 	logrus.WarnLevel:  aurora.MagentaBg | aurora.BrightBg | aurora.WhiteFg,
-	logrus.InfoLevel:  aurora.BlueBg | aurora.BrightBg | aurora.WhiteFg,
+	logrus.InfoLevel:  aurora.WhiteFg,
 	logrus.DebugLevel: aurora.WhiteFg | aurora.FaintFm,
 	logrus.TraceLevel: aurora.WhiteFg | aurora.FaintFm,
 }
@@ -117,7 +117,7 @@ func (f *componentFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	buf.WriteByte(' ')
 	buf.WriteString(entry.Time.Format(time.DateTime))
 	buf.WriteByte(' ')
-	buf.WriteString(aurora.Index(componentColors[componentName], "["+componentName+"]").String())
+	buf.WriteString(aurora.Index(componentColors[componentName], "["+componentName+"]").Bold().String())
 	// space padding
 	if len(componentName) < f.MaxComponentLength {
 		buf.WriteString(strings.Repeat(" ", f.MaxComponentLength-len(componentName)))

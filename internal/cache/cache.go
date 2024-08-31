@@ -46,7 +46,7 @@ func (c SystemCache) Create(ctx context.Context, progressChan chan<- float64) er
 	}
 
 	err = c.populateWithTx(ctx, tx, progressChan)
-	return errors.Join(err, tx.Done(err))
+	return tx.Done(err)
 }
 
 func (c SystemCache) populateWithTx(ctx context.Context, tx query.Tx, progressChan chan<- float64) error {

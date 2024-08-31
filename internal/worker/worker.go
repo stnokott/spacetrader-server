@@ -132,7 +132,7 @@ func (w *Worker) logState(ctx context.Context) {
 		case <-ticker.C:
 			currentJob := w.currentJob.Load()
 			if currentJob != "" {
-				logger.Debugf("<%s> progress: %3.f%%", currentJob, w.currentProgress.Load()*100)
+				logger.Infof("<%s> progress: %3.f%%", currentJob, w.currentProgress.Load()*100)
 			} else {
 				logger.Debug("no jobs")
 			}
@@ -143,12 +143,12 @@ func (w *Worker) logState(ctx context.Context) {
 func (w *Worker) process(ctx context.Context, item queueItem, progressChan chan<- float64, doneChan chan<- struct{}) {
 	w.currentJob.Store(item.Name)
 
-	logger.Debugf("<%s> started", item.Name)
+	logger.Infof("<%s> started", item.Name)
 	err := item.Job(ctx, progressChan)
 	if err != nil {
-		logger.Debugf("<%s> finished with err %v", item.Name, err)
+		logger.Warnf("<%s> finished with err %v", item.Name, err)
 	} else {
-		logger.Debugf("<%s> finished", item.Name)
+		logger.Infof("<%s> finished", item.Name)
 	}
 
 	// only clear the item from the index when processing is done (deferred),

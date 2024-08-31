@@ -83,7 +83,7 @@ func (c *Client) Get(ctx context.Context, dst any, path string) (err error) {
 			err = fmt.Errorf("%s: %w", path, err)
 		}
 	}()
-	req := c.r.R().SetResult(dst)
+	req := c.r.R().SetResult(dst) // TODO: use SetError
 	var resp *resty.Response
 	resp, err = req.SetContext(ctx).Get(path)
 	if err != nil {
