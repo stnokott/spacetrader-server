@@ -3,4 +3,8 @@
 	"go.lintFlags": [
 		"-exclude=\"*.gen.go\""
 	],
+	"sonarlint.connectedMode.project": {
+		"connectionId": "stnokott-github",
+		"projectKey": "stnokott_spacetrader"
+	},
 }
