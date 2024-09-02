@@ -9,6 +9,58 @@ import (
 	"context"
 )
 
+const getAllSystems = `-- name: GetAllSystems :many
+SELECT
+	  systems.symbol AS name
+	, systems.x AS x
+	, systems.y AS y
+	, COUNT(jump_gates.waypoint) > 0 AS has_jumpgates
+FROM systems
+JOIN waypoints
+	ON systems.symbol = waypoints.system
+LEFT JOIN jump_gates
+	ON waypoints.symbol = jump_gates.waypoint
+GROUP BY
+	  systems.symbol
+	, systems.x
+	, systems.y
+`
+
+type GetAllSystemsRow struct {
+	Name         string
+	X            int64
+	Y            int64
+	HasJumpgates bool
+}
+
+func (q *Queries) GetAllSystems(ctx context.Context) ([]GetAllSystemsRow, error) {
+	rows, err := q.query(ctx, q.getAllSystemsStmt, getAllSystems)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetAllSystemsRow{}
+	for rows.Next() {
+		var i GetAllSystemsRow
+		if err := rows.Scan(
+			&i.Name,
+			&i.X,
+			&i.Y,
+			&i.HasJumpgates,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getSystemByName = `-- name: GetSystemByName :one
 ;
 
@@ -26,75 +78,6 @@ func (q *Queries) GetSystemByName(ctx context.Context, systemName string) (GetSy
 	var i GetSystemByNameRow
 	err := row.Scan(&i.X, &i.Y)
 	return i, err
-}
-
-const getSystemsInRect = `-- name: GetSystemsInRect :many
-SELECT
-	  systems.symbol, systems.x, systems.y, systems.type, systems.factions
-	, CAST(IFNULL(GROUP_CONCAT(wp_connected.system, ','), '') AS TEXT) AS connected_systems
-FROM systems
-JOIN waypoints
-	ON systems.symbol = waypoints.system
-LEFT JOIN jump_gates
-	ON waypoints.symbol = jump_gates.waypoint
-LEFT JOIN waypoints wp_connected
-	ON wp_connected.symbol = jump_gates.connects_to
-WHERE TRUE
-	AND systems.x >= ?1 AND systems.x <= ?2
-	AND systems.y >= ?3 AND systems.y <= ?4
-GROUP BY
-	  systems.symbol
-	, systems.x
-	, systems.y
-	, systems.type
-	, factions
-`
-
-type GetSystemsInRectParams struct {
-	XMin int64
-	XMax int64
-	YMin int64
-	YMax int64
-}
-
-type GetSystemsInRectRow struct {
-	System           System
-	ConnectedSystems string
-}
-
-func (q *Queries) GetSystemsInRect(ctx context.Context, arg GetSystemsInRectParams) ([]GetSystemsInRectRow, error) {
-	rows, err := q.query(ctx, q.getSystemsInRectStmt, getSystemsInRect,
-		arg.XMin,
-		arg.XMax,
-		arg.YMin,
-		arg.YMax,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []GetSystemsInRectRow{}
-	for rows.Next() {
-		var i GetSystemsInRectRow
-		if err := rows.Scan(
-			&i.System.Symbol,
-			&i.System.X,
-			&i.System.Y,
-			&i.System.Type,
-			&i.System.Factions,
-			&i.ConnectedSystems,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }
 
 const hasSystemsRows = `-- name: HasSystemsRows :one

@@ -25,7 +25,7 @@ const (
 	Spacetrader_GetCurrentAgent_FullMethodName    = "/proto.Spacetrader/GetCurrentAgent"
 	Spacetrader_GetFleet_FullMethodName           = "/proto.Spacetrader/GetFleet"
 	Spacetrader_GetShipCoordinates_FullMethodName = "/proto.Spacetrader/GetShipCoordinates"
-	Spacetrader_GetSystemsInRect_FullMethodName   = "/proto.Spacetrader/GetSystemsInRect"
+	Spacetrader_GetAllSystems_FullMethodName      = "/proto.Spacetrader/GetAllSystems"
 )
 
 // SpacetraderClient is the client API for Spacetrader service.
@@ -37,7 +37,7 @@ type SpacetraderClient interface {
 	GetCurrentAgent(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Agent, error)
 	GetFleet(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Fleet, error)
 	GetShipCoordinates(ctx context.Context, in *GetShipCoordinatesRequest, opts ...grpc.CallOption) (*GetShipCoordinatesResponse, error)
-	GetSystemsInRect(ctx context.Context, in *Rect, opts ...grpc.CallOption) (Spacetrader_GetSystemsInRectClient, error)
+	GetAllSystems(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (Spacetrader_GetAllSystemsClient, error)
 }
 
 type spacetraderClient struct {
@@ -98,13 +98,13 @@ func (c *spacetraderClient) GetShipCoordinates(ctx context.Context, in *GetShipC
 	return out, nil
 }
 
-func (c *spacetraderClient) GetSystemsInRect(ctx context.Context, in *Rect, opts ...grpc.CallOption) (Spacetrader_GetSystemsInRectClient, error) {
+func (c *spacetraderClient) GetAllSystems(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (Spacetrader_GetAllSystemsClient, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &Spacetrader_ServiceDesc.Streams[0], Spacetrader_GetSystemsInRect_FullMethodName, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &Spacetrader_ServiceDesc.Streams[0], Spacetrader_GetAllSystems_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &spacetraderGetSystemsInRectClient{ClientStream: stream}
+	x := &spacetraderGetAllSystemsClient{ClientStream: stream}
 	if err := x.ClientStream.SendMsg(in); err != nil {
 		return nil, err
 	}
@@ -114,17 +114,17 @@ func (c *spacetraderClient) GetSystemsInRect(ctx context.Context, in *Rect, opts
 	return x, nil
 }
 
-type Spacetrader_GetSystemsInRectClient interface {
-	Recv() (*GetSystemsInRectResponse, error)
+type Spacetrader_GetAllSystemsClient interface {
+	Recv() (*GetAllSystemsResponseItem, error)
 	grpc.ClientStream
 }
 
-type spacetraderGetSystemsInRectClient struct {
+type spacetraderGetAllSystemsClient struct {
 	grpc.ClientStream
 }
 
-func (x *spacetraderGetSystemsInRectClient) Recv() (*GetSystemsInRectResponse, error) {
-	m := new(GetSystemsInRectResponse)
+func (x *spacetraderGetAllSystemsClient) Recv() (*GetAllSystemsResponseItem, error) {
+	m := new(GetAllSystemsResponseItem)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -140,7 +140,7 @@ type SpacetraderServer interface {
 	GetCurrentAgent(context.Context, *emptypb.Empty) (*Agent, error)
 	GetFleet(context.Context, *emptypb.Empty) (*Fleet, error)
 	GetShipCoordinates(context.Context, *GetShipCoordinatesRequest) (*GetShipCoordinatesResponse, error)
-	GetSystemsInRect(*Rect, Spacetrader_GetSystemsInRectServer) error
+	GetAllSystems(*emptypb.Empty, Spacetrader_GetAllSystemsServer) error
 	mustEmbedUnimplementedSpacetraderServer()
 }
 
@@ -163,8 +163,8 @@ func (UnimplementedSpacetraderServer) GetFleet(context.Context, *emptypb.Empty) 
 func (UnimplementedSpacetraderServer) GetShipCoordinates(context.Context, *GetShipCoordinatesRequest) (*GetShipCoordinatesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetShipCoordinates not implemented")
 }
-func (UnimplementedSpacetraderServer) GetSystemsInRect(*Rect, Spacetrader_GetSystemsInRectServer) error {
-	return status.Errorf(codes.Unimplemented, "method GetSystemsInRect not implemented")
+func (UnimplementedSpacetraderServer) GetAllSystems(*emptypb.Empty, Spacetrader_GetAllSystemsServer) error {
+	return status.Errorf(codes.Unimplemented, "method GetAllSystems not implemented")
 }
 func (UnimplementedSpacetraderServer) mustEmbedUnimplementedSpacetraderServer() {}
 
@@ -269,24 +269,24 @@ func _Spacetrader_GetShipCoordinates_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Spacetrader_GetSystemsInRect_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(Rect)
+func _Spacetrader_GetAllSystems_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(emptypb.Empty)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
-	return srv.(SpacetraderServer).GetSystemsInRect(m, &spacetraderGetSystemsInRectServer{ServerStream: stream})
+	return srv.(SpacetraderServer).GetAllSystems(m, &spacetraderGetAllSystemsServer{ServerStream: stream})
 }
 
-type Spacetrader_GetSystemsInRectServer interface {
-	Send(*GetSystemsInRectResponse) error
+type Spacetrader_GetAllSystemsServer interface {
+	Send(*GetAllSystemsResponseItem) error
 	grpc.ServerStream
 }
 
-type spacetraderGetSystemsInRectServer struct {
+type spacetraderGetAllSystemsServer struct {
 	grpc.ServerStream
 }
 
-func (x *spacetraderGetSystemsInRectServer) Send(m *GetSystemsInRectResponse) error {
+func (x *spacetraderGetAllSystemsServer) Send(m *GetAllSystemsResponseItem) error {
 	return x.ServerStream.SendMsg(m)
 }
 
@@ -320,8 +320,8 @@ var Spacetrader_ServiceDesc = grpc.ServiceDesc{
 	},
 	Streams: []grpc.StreamDesc{
 		{
-			StreamName:    "GetSystemsInRect",
-			Handler:       _Spacetrader_GetSystemsInRect_Handler,
+			StreamName:    "GetAllSystems",
+			Handler:       _Spacetrader_GetAllSystems_Handler,
 			ServerStreams: true,
 		},
 	},

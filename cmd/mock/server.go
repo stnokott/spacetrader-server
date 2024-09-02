@@ -87,19 +87,19 @@ func (s *MockServer) GetShipCoordinates(_ context.Context, _ *pb.GetShipCoordina
 	}, nil
 }
 
-// GetSystemsInRect is a mock.
-func (s *MockServer) GetSystemsInRect(rect *pb.Rect, stream pb.Spacetrader_GetSystemsInRectServer) error {
+// GetAllSystems is a mock.
+func (s *MockServer) GetAllSystems(_ *emptypb.Empty, stream pb.Spacetrader_GetAllSystemsServer) error {
 	for _, system := range s.systems {
-		if system.X >= rect.Start.X &&
-			system.X <= rect.End.X &&
-			system.Y >= rect.Start.Y &&
-			system.Y <= rect.End.Y {
-			if err := stream.Send(&pb.GetSystemsInRectResponse{
-				System:    system,
-				ShipCount: rand.Int31n(3),
-			}); err != nil {
-				return fmt.Errorf("sending system: %w", err)
-			}
+		if err := stream.Send(&pb.GetAllSystemsResponseItem{
+			Name: system.Id,
+			Pos: &pb.Vector{
+				X: system.X,
+				Y: system.Y,
+			},
+			HasJumpgates: rand.Float32() > 0.5,
+			ShipCount:    rand.Int31n(3),
+		}); err != nil {
+			return fmt.Errorf("sending system: %w", err)
 		}
 	}
 	return nil

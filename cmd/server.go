@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"strings"
 	"time"
 
 	"github.com/stnokott/spacetrader-server/internal/api"
@@ -197,39 +196,27 @@ func (s *Server) GetShipCoordinates(ctx context.Context, req *pb.GetShipCoordina
 	}, nil
 }
 
-// GetSystemsInRect streams all systems whose coordinates fall into rect.
-func (s *Server) GetSystemsInRect(rect *pb.Rect, stream pb.Spacetrader_GetSystemsInRectServer) error {
-	ctx, cancel := context.WithTimeout(stream.Context(), 5*time.Second)
+// GetAllSystems streams all systems.
+func (s *Server) GetAllSystems(_ *emptypb.Empty, stream pb.Spacetrader_GetAllSystemsServer) error {
+	ctx, cancel := context.WithTimeout(stream.Context(), 10*time.Second)
 	defer cancel()
 
-	rows, err := s.queries.GetSystemsInRect(ctx, query.GetSystemsInRectParams{
-		XMin: int64(rect.Start.X),
-		YMin: int64(rect.Start.Y),
-		XMax: int64(rect.End.X),
-		YMax: int64(rect.End.Y),
-	})
+	rows, err := s.queries.GetAllSystems(ctx)
 	if err != nil {
-		return fmt.Errorf("querying systems within rect: %w", err)
+		return fmt.Errorf("querying systems: %w", err)
 	}
 
 	shipMap := s.shipsPerSystem()
 
 	for _, row := range rows {
-		system, err := convert.ConvertSystem(&row.System)
-		if err != nil {
-			return err
-		}
-		shipCount := shipMap[system.Id]
-		connectedSystems := strings.Split(row.ConnectedSystems, ",")
-		// use empty slice if no match
-		if len(connectedSystems) == 1 && connectedSystems[0] == "" {
-			connectedSystems = []string{}
-		}
-
-		if err = stream.Send(&pb.GetSystemsInRectResponse{
-			System:           system,
-			ShipCount:        int32(shipCount),
-			ConnectedSystems: connectedSystems,
+		if err = stream.Send(&pb.GetAllSystemsResponseItem{
+			Name: row.Name,
+			Pos: &pb.Vector{
+				X: int32(row.X),
+				Y: int32(row.Y),
+			},
+			ShipCount:    int32(shipMap[row.Name]),
+			HasJumpgates: row.HasJumpgates,
 		}); err != nil {
 			return fmt.Errorf("sending system via gRPC: %w", err)
 		}
