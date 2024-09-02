@@ -30,11 +30,24 @@ func (q *Queries) GetSystemByName(ctx context.Context, systemName string) (GetSy
 
 const getSystemsInRect = `-- name: GetSystemsInRect :many
 SELECT
-	symbol, x, y, type, factions
+	  systems.symbol, systems.x, systems.y, systems.type, systems.factions
+	, CAST(IFNULL(GROUP_CONCAT(wp_connected.system, ','), '') AS TEXT) AS connected_systems
 FROM systems
+JOIN waypoints
+	ON systems.symbol = waypoints.system
+LEFT JOIN jump_gates
+	ON waypoints.symbol = jump_gates.waypoint
+LEFT JOIN waypoints wp_connected
+	ON wp_connected.symbol = jump_gates.connects_to
 WHERE TRUE
-	AND x >= ?1 AND x <= ?2
-	AND y >= ?3 AND y <= ?4
+	AND systems.x >= ?1 AND systems.x <= ?2
+	AND systems.y >= ?3 AND systems.y <= ?4
+GROUP BY
+	  systems.symbol
+	, systems.x
+	, systems.y
+	, systems.type
+	, factions
 `
 
 type GetSystemsInRectParams struct {
@@ -44,7 +57,12 @@ type GetSystemsInRectParams struct {
 	YMax int64
 }
 
-func (q *Queries) GetSystemsInRect(ctx context.Context, arg GetSystemsInRectParams) ([]System, error) {
+type GetSystemsInRectRow struct {
+	System           System
+	ConnectedSystems string
+}
+
+func (q *Queries) GetSystemsInRect(ctx context.Context, arg GetSystemsInRectParams) ([]GetSystemsInRectRow, error) {
 	rows, err := q.query(ctx, q.getSystemsInRectStmt, getSystemsInRect,
 		arg.XMin,
 		arg.XMax,
@@ -55,15 +73,16 @@ func (q *Queries) GetSystemsInRect(ctx context.Context, arg GetSystemsInRectPara
 		return nil, err
 	}
 	defer rows.Close()
-	items := []System{}
+	items := []GetSystemsInRectRow{}
 	for rows.Next() {
-		var i System
+		var i GetSystemsInRectRow
 		if err := rows.Scan(
-			&i.Symbol,
-			&i.X,
-			&i.Y,
-			&i.Type,
-			&i.Factions,
+			&i.System.Symbol,
+			&i.System.X,
+			&i.System.Y,
+			&i.System.Type,
+			&i.System.Factions,
+			&i.ConnectedSystems,
 		); err != nil {
 			return nil, err
 		}

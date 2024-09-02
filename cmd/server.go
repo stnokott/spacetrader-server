@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/stnokott/spacetrader-server/internal/api"
@@ -94,7 +95,7 @@ func (s *Server) Listen(port int) error {
 }
 
 func onGrpcStream(srv any, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-	logger.Debugf("gRPC call to %s", info.FullMethod)
+	logger.Infof("gRPC call to %s", info.FullMethod)
 	err := handler(srv, stream)
 	if err != nil {
 		logger.Errorf("gRPC error streaming %s: %v", info.FullMethod, err)
@@ -103,7 +104,7 @@ func onGrpcStream(srv any, stream grpc.ServerStream, info *grpc.StreamServerInfo
 }
 
 func onGrpcUnary(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
-	logger.Debugf("gRPC call to %s", info.FullMethod)
+	logger.Infof("gRPC call to %s", info.FullMethod)
 	resp, err = handler(ctx, req)
 	if err != nil {
 		logger.Errorf("gRPC error unary %s: %v", info.FullMethod, err)
@@ -214,15 +215,21 @@ func (s *Server) GetSystemsInRect(rect *pb.Rect, stream pb.Spacetrader_GetSystem
 	shipMap := s.shipsPerSystem()
 
 	for _, row := range rows {
-		system, err := convert.ConvertSystem(&row)
+		system, err := convert.ConvertSystem(&row.System)
 		if err != nil {
 			return err
 		}
 		shipCount := shipMap[system.Id]
+		connectedSystems := strings.Split(row.ConnectedSystems, ",")
+		// use empty slice if no match
+		if len(connectedSystems) == 1 && connectedSystems[0] == "" {
+			connectedSystems = []string{}
+		}
 
 		if err = stream.Send(&pb.GetSystemsInRectResponse{
-			System:    system,
-			ShipCount: int32(shipCount),
+			System:           system,
+			ShipCount:        int32(shipCount),
+			ConnectedSystems: connectedSystems,
 		}); err != nil {
 			return fmt.Errorf("sending system via gRPC: %w", err)
 		}

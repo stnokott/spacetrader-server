@@ -13,11 +13,24 @@ DELETE FROM systems;
 
 -- name: GetSystemsInRect :many
 SELECT
-	symbol, x, y, type, factions
+	  sqlc.embed(systems)
+	, CAST(IFNULL(GROUP_CONCAT(wp_connected.system, ','), '') AS TEXT) AS connected_systems
 FROM systems
+JOIN waypoints
+	ON systems.symbol = waypoints.system
+LEFT JOIN jump_gates
+	ON waypoints.symbol = jump_gates.waypoint
+LEFT JOIN waypoints wp_connected
+	ON wp_connected.symbol = jump_gates.connects_to
 WHERE TRUE
-	AND x >= sqlc.arg(x_min) AND x <= sqlc.arg(x_max)
-	AND y >= sqlc.arg(y_min) AND y <= sqlc.arg(y_max)
+	AND systems.x >= sqlc.arg(x_min) AND systems.x <= sqlc.arg(x_max)
+	AND systems.y >= sqlc.arg(y_min) AND systems.y <= sqlc.arg(y_max)
+GROUP BY
+	  systems.symbol
+	, systems.x
+	, systems.y
+	, systems.type
+	, factions
 ;
 
 -- name: GetSystemByName :one
