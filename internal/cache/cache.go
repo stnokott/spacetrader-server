@@ -1,3 +1,4 @@
+// Package cache implements several caches for API data.
 package cache
 
 import (
@@ -15,6 +16,10 @@ import (
 )
 
 var logger = log.ForComponent("cache")
+
+// TODO: system cache should store the time at which it created the cache.
+//       this should then be used to check on each startup whether the game was reset
+//       since last cache creation, thus requiring recreation of the cache.
 
 // SystemCache is a cache for galaxy systems.
 type SystemCache struct {
