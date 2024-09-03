@@ -13,12 +13,21 @@ import (
 func GenerateSystems(count int, coordMin int, coordMax int) []*pb.System {
 	systems := make([]*pb.System, count)
 	for i := range systems {
+		systemName := GenerateSystemName(count, i)
 		systems[i] = &pb.System{
-			Id:       GenerateSystemName(count, i),
+			Id:       systemName,
 			X:        int32(coordMin + rand.Intn(coordMax-coordMin)),
 			Y:        int32(coordMin + rand.Intn(coordMax-coordMin)),
 			Type:     pb.System_Type(int(pb.System_UNKNOWN_SYSTEMTYPE) + rand.Intn(int(pb.System_UNSTABLE))),
 			Factions: []pb.Faction{},
+			Waypoints: []*pb.WaypointBase{
+				{
+					Id:     systemName + "-WP",
+					System: systemName,
+					X:      0,
+					Y:      0,
+				},
+			},
 		}
 		if rand.Float64() > 0.75 {
 			systems[i].Factions = []pb.Faction{

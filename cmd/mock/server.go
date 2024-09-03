@@ -26,6 +26,24 @@ type MockServer struct {
 	pb.UnimplementedSpacetraderServer
 
 	systems []*pb.System
+	ships   []*pb.Ship
+}
+
+func newMockServer() *MockServer {
+	systems := mocks.GenerateSystems(2000, -10000, 10000)
+
+	systemIdx1 := rand.Intn(len(systems))
+	system1 := systems[systemIdx1]
+	ship1 := mocks.NewShipInSystem("Enterprise", system1)
+
+	systemIdx2 := rand.Intn(len(systems))
+	system2 := systems[systemIdx2]
+	ship2 := mocks.NewShipInSystem("Pod Racer", system2)
+
+	return &MockServer{
+		systems: systems,
+		ships:   []*pb.Ship{ship1, ship2},
+	}
 }
 
 // Ping is a mock.
@@ -70,21 +88,7 @@ func (s *MockServer) GetCurrentAgent(_ context.Context, _ *emptypb.Empty) (*pb.A
 
 // GetFleet is a mock.
 func (s *MockServer) GetFleet(_ context.Context, _ *emptypb.Empty) (*pb.Fleet, error) {
-	ship1 := mocks.NewDefaultShip()
-	ship1.Name = "Enterprise"
-	ship2 := mocks.NewDefaultShip()
-	ship2.Name = "Pod Racer"
-
-	return &pb.Fleet{Ships: []*pb.Ship{
-		ship1, ship2,
-	}}, nil
-}
-
-// GetShipCoordinates is a mock.
-func (s *MockServer) GetShipCoordinates(_ context.Context, _ *pb.GetShipCoordinatesRequest) (*pb.GetShipCoordinatesResponse, error) {
-	return &pb.GetShipCoordinatesResponse{
-		X: 0, Y: 0,
-	}, nil
+	return &pb.Fleet{Ships: s.ships}, nil
 }
 
 // GetAllSystems is a mock.
@@ -112,9 +116,7 @@ func main() {
 		return
 	}
 
-	s := &MockServer{
-		systems: mocks.GenerateSystems(500, -2000, 2000),
-	}
+	s := newMockServer()
 
 	srv := grpc.NewServer()
 	pb.RegisterSpacetraderServer(srv, s)

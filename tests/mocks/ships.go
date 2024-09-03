@@ -8,8 +8,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// NewDefaultShip creates a new instance of the default ship, ready to be modified freely.
-func NewDefaultShip() *pb.Ship {
+func newDefaultShip() *pb.Ship {
 	ship := new(pb.Ship)
 	if err := copier.CopyWithOption(ship, defaultShip, copier.Option{DeepCopy: true}); err != nil {
 		// only called during testing, so panicking is ok
@@ -18,34 +17,25 @@ func NewDefaultShip() *pb.Ship {
 	return ship
 }
 
+func NewShipInSystem(name string, sys *pb.System) *pb.Ship {
+	ship := newDefaultShip()
+	ship.Name = name
+	ship.CurrentLocation.System = sys
+	wp := sys.Waypoints[0]
+	ship.CurrentLocation.Waypoint = wp
+	ship.Route.Origin = wp
+	ship.Route.Destination = wp
+	return ship
+}
+
 var defaultShip = &pb.Ship{
-	Id:   "STNOKOTT-1",
-	Name: "STNOKOTT-1",
-	Role: pb.Ship_COMMAND,
-	CurrentLocation: &pb.Ship_Location{
-		System:   "X1-MB64",
-		Waypoint: "X1-MB64-A1",
-	},
-	Route: &pb.Ship_Route{
-		Origin: &pb.WaypointBase{
-			Id:     "X1-MB64-A1",
-			System: "X1-MB64",
-			Type:   pb.WaypointBase_PLANET,
-			X:      22,
-			Y:      -13,
-		},
-		Destination: &pb.WaypointBase{
-			Id:     "X1-MB64-A1",
-			System: "X1-MB64",
-			Type:   pb.WaypointBase_PLANET,
-			X:      22,
-			Y:      -13,
-		},
-		ArrivalTime:   timestamppb.New(time.Date(2024, 6, 30, 22, 14, 48, 907, time.UTC)),
-		DepartureTime: timestamppb.New(time.Date(2024, 6, 30, 22, 14, 48, 907, time.UTC)),
-	},
-	Status:     pb.Ship_DOCKED,
-	FlightMode: pb.Ship_CRUISE,
+	Id:              "STNOKOTT-1",
+	Name:            "STNOKOTT-1",
+	Role:            pb.Ship_COMMAND,
+	CurrentLocation: &pb.Ship_Location{}, // should be filled when copying
+	Route:           &pb.Ship_Route{},    // should be filled when copying
+	Status:          pb.Ship_DOCKED,
+	FlightMode:      pb.Ship_CRUISE,
 	Crew: &pb.Ship_Crew{
 		Current:  57,
 		Capacity: 80,

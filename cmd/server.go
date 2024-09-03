@@ -181,21 +181,6 @@ func (s *Server) GetFleet(_ context.Context, _ *emptypb.Empty) (*pb.Fleet, error
 	}, nil
 }
 
-// GetShipCoordinates returns the x and y coordinates for a ship, identified by its name
-func (s *Server) GetShipCoordinates(ctx context.Context, req *pb.GetShipCoordinatesRequest) (*pb.GetShipCoordinatesResponse, error) {
-	ship, err := s.fleetCache.ShipByName(req.ShipName)
-	if err != nil {
-		return nil, err
-	}
-	system, err := s.queries.GetSystemByName(ctx, ship.CurrentLocation.System)
-	if err != nil {
-		return nil, err
-	}
-	return &pb.GetShipCoordinatesResponse{
-		X: int32(system.X), Y: int32(system.Y),
-	}, nil
-}
-
 // GetAllSystems streams all systems.
 func (s *Server) GetAllSystems(_ *emptypb.Empty, stream pb.Spacetrader_GetAllSystemsServer) error {
 	ctx, cancel := context.WithTimeout(stream.Context(), 10*time.Second)
@@ -228,7 +213,7 @@ func (s *Server) shipsPerSystem() map[string]int {
 	m := map[string]int{}
 
 	for _, ship := range s.fleetCache.Ships {
-		m[ship.CurrentLocation.System]++
+		m[ship.CurrentLocation.System.Id]++
 	}
 	return m
 }
