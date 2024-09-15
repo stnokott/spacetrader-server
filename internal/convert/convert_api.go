@@ -38,21 +38,6 @@ type ConverterAPI interface {
 	// goverter:map Arrival ArrivalTime
 	ConvertNavRoute(source api.ShipNavRoute) (*pb.Ship_Route, error)
 
-	// goverter:map Symbol Type
-	// goverter:map . Degradation
-	ConvertShipFrame(source api.ShipFrame) (*pb.FrameComponent, error)
-	// goverter:map Symbol Type
-	// goverter:map . Degradation
-	ConvertShipReactor(source api.ShipReactor) (*pb.ReactorComponent, error)
-	// goverter:map Symbol Type
-	// goverter:map . Degradation
-	ConvertShipEngine(source api.ShipEngine) (*pb.EngineComponent, error)
-
-	// goverter:map Symbol Type
-	ConvertShipMount(source api.ShipMount) (*pb.Mount, error)
-	// goverter:map Symbol Type
-	ConvertShipModule(source api.ShipModule) (*pb.Module, error)
-
 	// goverter:enum:transform regex ShipRole(\w+) Ship_${1}
 	// goverter:enum:unknown @error
 	ConvertShipRole(source api.ShipRole) (pb.Ship_Role, error)
@@ -63,23 +48,12 @@ type ConverterAPI interface {
 	// goverter:enum:unknown @error
 	ConvertShipFlightStatus(s api.ShipNavStatus) (pb.Ship_FlightStatus, error)
 
-	// goverter:enum:transform regex (.+) Ship_Crew_${1}
-	// goverter:enum:unknown @error
-	ConvertShipCrewRotation(s api.ShipCrewRotation) (pb.Ship_Crew_Rotation, error)
-
-	// goverter:useZeroValueOnPointerInconsistency yes
-	ConvertShipMountDeposits(source *[]api.ShipMountDeposits) ([]pb.TradeItem, error)
-
-	// goverter:map Symbol Type
-	ConvertShipCargoItem(source api.ShipCargoItem) (*pb.Ship_Cargo_InventoryItem, error)
-
 	// goverter:map Symbol Id
 	// goverter:map Registration.Name Name
 	// goverter:map Registration.Role Role
 	// goverter:map Nav CurrentLocation
 	// goverter:map Nav.Route Route
 	// goverter:map Nav.Status Status
-	// goverter:map Nav.FlightMode FlightMode
 	ConvertShip(source *api.Ship) (*pb.Ship, error)
 	ConvertShips(source []*api.Ship) ([]*pb.Ship, error)
 }
@@ -106,6 +80,7 @@ func ParseFaction(s string) (pb.Faction, error) {
 	return pb.Faction_UNKNOWN_FACTION, fmt.Errorf("invalid faction '%s'", s)
 }
 
+/*
 // ParseShipRoute returns nil if the ship is not in transit and uses
 // a regular conversion otherwise.
 func ParseShipRoute(c ConverterAPI, source api.ShipNavRoute) (*pb.Ship_Route, error) {
@@ -117,6 +92,7 @@ func ParseShipRoute(c ConverterAPI, source api.ShipNavRoute) (*pb.Ship_Route, er
 
 	return c.ConvertNavRoute(source)
 }
+*/
 
 // ParseWaypointType parses a waypoint type string into its enum pb equivalent.
 func ParseWaypointType(s api.WaypointType) (pb.WaypointBase_Type, error) {
@@ -124,14 +100,6 @@ func ParseWaypointType(s api.WaypointType) (pb.WaypointBase_Type, error) {
 		return pb.WaypointBase_Type(t), nil
 	}
 	return pb.WaypointBase_UNKNOWN_WAYPOINTTYPE, fmt.Errorf("invalid waypoint type '%s'", s)
-}
-
-// ParseShipFlightMode parses a ship flight mode into its enum equivalent.
-func ParseShipFlightMode(s api.ShipNavFlightMode) (pb.Ship_FlightMode, error) {
-	if mode, ok := pb.Ship_FlightMode_value[string(s)]; ok {
-		return pb.Ship_FlightMode(mode), nil
-	}
-	return pb.Ship_UNKNOWN_FLIGHTMODE, fmt.Errorf("invalid ship flight mode '%s'", s)
 }
 
 // ParseShipEngineType parses a ship engine type into its enum equivalent.

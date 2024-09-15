@@ -172,7 +172,7 @@ func (s *Server) GetCurrentAgent(ctx context.Context, _ *emptypb.Empty) (*pb.Age
 }
 
 // GetFleet returns the complete list of ships in the agent's posession.
-func (s *Server) GetFleet(_ context.Context, _ *emptypb.Empty) (*pb.Fleet, error) {
+func (s *Server) GetFleet(ctx context.Context, _ *emptypb.Empty) (*pb.Fleet, error) {
 	if s.fleetCache.Ships == nil {
 		return nil, errors.New("fleet cache has not been initialized")
 	}
@@ -213,7 +213,7 @@ func (s *Server) shipsPerSystem() map[string]int {
 	m := map[string]int{}
 
 	for _, ship := range s.fleetCache.Ships {
-		m[ship.CurrentLocation.System.Id]++
+		m[ship.CurrentLocation.System]++
 	}
 	return m
 }
