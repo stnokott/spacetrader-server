@@ -94,7 +94,7 @@ func (s *Server) Listen(port int) error {
 }
 
 func onGrpcStream(srv any, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-	logger.Debugf("gRPC call to %s", info.FullMethod)
+	logger.Infof("gRPC call to %s", info.FullMethod)
 	err := handler(srv, stream)
 	if err != nil {
 		logger.Errorf("gRPC error streaming %s: %v", info.FullMethod, err)
@@ -103,7 +103,7 @@ func onGrpcStream(srv any, stream grpc.ServerStream, info *grpc.StreamServerInfo
 }
 
 func onGrpcUnary(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
-	logger.Debugf("gRPC call to %s", info.FullMethod)
+	logger.Infof("gRPC call to %s", info.FullMethod)
 	resp, err = handler(ctx, req)
 	if err != nil {
 		logger.Errorf("gRPC error unary %s: %v", info.FullMethod, err)
@@ -172,7 +172,7 @@ func (s *Server) GetCurrentAgent(ctx context.Context, _ *emptypb.Empty) (*pb.Age
 }
 
 // GetFleet returns the complete list of ships in the agent's posession.
-func (s *Server) GetFleet(_ context.Context, _ *emptypb.Empty) (*pb.Fleet, error) {
+func (s *Server) GetFleet(ctx context.Context, _ *emptypb.Empty) (*pb.Fleet, error) {
 	if s.fleetCache.Ships == nil {
 		return nil, errors.New("fleet cache has not been initialized")
 	}
@@ -181,48 +181,27 @@ func (s *Server) GetFleet(_ context.Context, _ *emptypb.Empty) (*pb.Fleet, error
 	}, nil
 }
 
-// GetShipCoordinates returns the x and y coordinates for a ship, identified by its name
-func (s *Server) GetShipCoordinates(ctx context.Context, req *pb.GetShipCoordinatesRequest) (*pb.GetShipCoordinatesResponse, error) {
-	ship, err := s.fleetCache.ShipByName(req.ShipName)
-	if err != nil {
-		return nil, err
-	}
-	system, err := s.queries.GetSystemByName(ctx, ship.CurrentLocation.System)
-	if err != nil {
-		return nil, err
-	}
-	return &pb.GetShipCoordinatesResponse{
-		X: int32(system.X), Y: int32(system.Y),
-	}, nil
-}
-
-// GetSystemsInRect streams all systems whose coordinates fall into rect.
-func (s *Server) GetSystemsInRect(rect *pb.Rect, stream pb.Spacetrader_GetSystemsInRectServer) error {
-	ctx, cancel := context.WithTimeout(stream.Context(), 5*time.Second)
+// GetAllSystems streams all systems.
+func (s *Server) GetAllSystems(_ *emptypb.Empty, stream pb.Spacetrader_GetAllSystemsServer) error {
+	ctx, cancel := context.WithTimeout(stream.Context(), 10*time.Second)
 	defer cancel()
 
-	rows, err := s.queries.GetSystemsInRect(ctx, query.GetSystemsInRectParams{
-		XMin: int64(rect.Start.X),
-		YMin: int64(rect.Start.Y),
-		XMax: int64(rect.End.X),
-		YMax: int64(rect.End.Y),
-	})
+	rows, err := s.queries.GetAllSystems(ctx)
 	if err != nil {
-		return fmt.Errorf("querying systems within rect: %w", err)
+		return fmt.Errorf("querying systems: %w", err)
 	}
 
 	shipMap := s.shipsPerSystem()
 
 	for _, row := range rows {
-		system, err := convert.ConvertSystem(&row)
-		if err != nil {
-			return err
-		}
-		shipCount := shipMap[system.Id]
-
-		if err = stream.Send(&pb.GetSystemsInRectResponse{
-			System:    system,
-			ShipCount: int32(shipCount),
+		if err = stream.Send(&pb.GetAllSystemsResponseItem{
+			Name: row.Name,
+			Pos: &pb.Vector{
+				X: int32(row.X),
+				Y: int32(row.Y),
+			},
+			ShipCount:    int32(shipMap[row.Name]),
+			HasJumpgates: row.HasJumpgates,
 		}); err != nil {
 			return fmt.Errorf("sending system via gRPC: %w", err)
 		}

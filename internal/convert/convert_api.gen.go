@@ -7,7 +7,6 @@ import (
 	"fmt"
 	api "github.com/stnokott/spacetrader-server/internal/api"
 	proto "github.com/stnokott/spacetrader-server/internal/proto"
-	"time"
 )
 
 func ConvertAgent(source *api.Agent) (*proto.Agent, error) {
@@ -78,99 +77,9 @@ func ConvertShip(source *api.Ship) (*proto.Ship, error) {
 			return nil, err
 		}
 		protoShip.Status = protoShip_FlightStatus
-		protoShip_FlightMode, err := ParseShipFlightMode((*source).Nav.FlightMode)
-		if err != nil {
-			return nil, err
-		}
-		protoShip.FlightMode = protoShip_FlightMode
-		pProtoShip_Crew, err := apiShipCrewToPProtoShip_Crew((*source).Crew)
-		if err != nil {
-			return nil, err
-		}
-		protoShip.Crew = pProtoShip_Crew
-		pProtoFrameComponent, err := ConvertShipFrame((*source).Frame)
-		if err != nil {
-			return nil, err
-		}
-		protoShip.Frame = pProtoFrameComponent
-		pProtoReactorComponent, err := ConvertShipReactor((*source).Reactor)
-		if err != nil {
-			return nil, err
-		}
-		protoShip.Reactor = pProtoReactorComponent
-		pProtoEngineComponent, err := ConvertShipEngine((*source).Engine)
-		if err != nil {
-			return nil, err
-		}
-		protoShip.Engine = pProtoEngineComponent
-		protoShip.Cooldown = apiCooldownToPProtoShip_Cooldown((*source).Cooldown)
-		if (*source).Modules != nil {
-			protoShip.Modules = make([]*proto.Module, len((*source).Modules))
-			for i := 0; i < len((*source).Modules); i++ {
-				pProtoModule, err := ConvertShipModule((*source).Modules[i])
-				if err != nil {
-					return nil, err
-				}
-				protoShip.Modules[i] = pProtoModule
-			}
-		}
-		if (*source).Mounts != nil {
-			protoShip.Mounts = make([]*proto.Mount, len((*source).Mounts))
-			for j := 0; j < len((*source).Mounts); j++ {
-				pProtoMount, err := ConvertShipMount((*source).Mounts[j])
-				if err != nil {
-					return nil, err
-				}
-				protoShip.Mounts[j] = pProtoMount
-			}
-		}
-		pProtoShip_Cargo, err := apiShipCargoToPProtoShip_Cargo((*source).Cargo)
-		if err != nil {
-			return nil, err
-		}
-		protoShip.Cargo = pProtoShip_Cargo
-		protoShip.Fuel = apiShipFuelToPProtoShip_Fuel((*source).Fuel)
 		pProtoShip = &protoShip
 	}
 	return pProtoShip, nil
-}
-func ConvertShipCargoItem(source api.ShipCargoItem) (*proto.Ship_Cargo_InventoryItem, error) {
-	var protoShip_Cargo_InventoryItem proto.Ship_Cargo_InventoryItem
-	protoTradeItem, err := ParseTradeItem(source.Symbol)
-	if err != nil {
-		return nil, err
-	}
-	protoShip_Cargo_InventoryItem.Type = protoTradeItem
-	protoShip_Cargo_InventoryItem.Name = source.Name
-	protoShip_Cargo_InventoryItem.Description = source.Description
-	protoShip_Cargo_InventoryItem.Units = IntToInt32(source.Units)
-	return &protoShip_Cargo_InventoryItem, nil
-}
-func ConvertShipCrewRotation(source api.ShipCrewRotation) (proto.Ship_Crew_Rotation, error) {
-	var protoShip_Crew_Rotation proto.Ship_Crew_Rotation
-	switch source {
-	case api.RELAXED:
-		protoShip_Crew_Rotation = proto.Ship_Crew_RELAXED
-	case api.STRICT:
-		protoShip_Crew_Rotation = proto.Ship_Crew_STRICT
-	default:
-		return protoShip_Crew_Rotation, fmt.Errorf("unexpected enum element: %v", source)
-	}
-	return protoShip_Crew_Rotation, nil
-}
-func ConvertShipEngine(source api.ShipEngine) (*proto.EngineComponent, error) {
-	var protoEngineComponent proto.EngineComponent
-	protoEngineComponent.Name = source.Name
-	protoEngineComponent.Description = source.Description
-	protoEngineComponent.Requirements = apiShipRequirementsToPProtoModuleRequirements(source.Requirements)
-	protoEngineComponent_Type, err := ParseShipEngineType(source.Symbol)
-	if err != nil {
-		return nil, err
-	}
-	protoEngineComponent.Type = protoEngineComponent_Type
-	protoEngineComponent.Degradation = apiShipEngineToPProtoModuleDegradable(source)
-	protoEngineComponent.Speed = IntToInt32(source.Speed)
-	return &protoEngineComponent, nil
 }
 func ConvertShipFlightStatus(source api.ShipNavStatus) (proto.Ship_FlightStatus, error) {
 	var protoShip_FlightStatus proto.Ship_FlightStatus
@@ -186,103 +95,11 @@ func ConvertShipFlightStatus(source api.ShipNavStatus) (proto.Ship_FlightStatus,
 	}
 	return protoShip_FlightStatus, nil
 }
-func ConvertShipFrame(source api.ShipFrame) (*proto.FrameComponent, error) {
-	var protoFrameComponent proto.FrameComponent
-	protoFrameComponent.Name = source.Name
-	protoFrameComponent.Description = source.Description
-	protoFrameComponent.Requirements = apiShipRequirementsToPProtoModuleRequirements(source.Requirements)
-	protoFrameComponent_Type, err := ParseShipFrameType(source.Symbol)
-	if err != nil {
-		return nil, err
-	}
-	protoFrameComponent.Type = protoFrameComponent_Type
-	protoFrameComponent.Degradation = apiShipFrameToPProtoModuleDegradable(source)
-	protoFrameComponent.ModuleSlots = IntToInt32(source.ModuleSlots)
-	protoFrameComponent.MountingPoints = IntToInt32(source.MountingPoints)
-	protoFrameComponent.FuelCapacity = IntToInt32(source.FuelCapacity)
-	return &protoFrameComponent, nil
-}
 func ConvertShipLocation(source api.ShipNav) *proto.Ship_Location {
 	var protoShip_Location proto.Ship_Location
 	protoShip_Location.System = source.SystemSymbol
 	protoShip_Location.Waypoint = source.WaypointSymbol
 	return &protoShip_Location
-}
-func ConvertShipModule(source api.ShipModule) (*proto.Module, error) {
-	var protoModule proto.Module
-	protoModule.Name = source.Name
-	protoModule.Description = source.Description
-	protoModule.Requirements = apiShipRequirementsToPProtoModuleRequirements(source.Requirements)
-	protoModule_Type, err := ParseShipModuleType(source.Symbol)
-	if err != nil {
-		return nil, err
-	}
-	protoModule.Type = protoModule_Type
-	if source.Capacity != nil {
-		xint32 := IntToInt32(*source.Capacity)
-		protoModule.Capacity = &xint32
-	}
-	if source.Range != nil {
-		xint322 := IntToInt32(*source.Range)
-		protoModule.Range = &xint322
-	}
-	return &protoModule, nil
-}
-func ConvertShipMount(source api.ShipMount) (*proto.Mount, error) {
-	var protoMount proto.Mount
-	protoMount.Name = source.Name
-	if source.Description != nil {
-		xstring := *source.Description
-		protoMount.Description = &xstring
-	}
-	protoMount.Requirements = apiShipRequirementsToPProtoModuleRequirements(source.Requirements)
-	protoMount_Type, err := ParseShipMountType(source.Symbol)
-	if err != nil {
-		return nil, err
-	}
-	protoMount.Type = protoMount_Type
-	if source.Strength != nil {
-		xint32 := IntToInt32(*source.Strength)
-		protoMount.Strength = &xint32
-	}
-	protoTradeItemList, err := ConvertShipMountDeposits(source.Deposits)
-	if err != nil {
-		return nil, err
-	}
-	protoMount.Deposits = protoTradeItemList
-	return &protoMount, nil
-}
-func ConvertShipMountDeposits(source *[]api.ShipMountDeposits) ([]proto.TradeItem, error) {
-	var protoTradeItemList []proto.TradeItem
-	if source != nil {
-		var protoTradeItemList2 []proto.TradeItem
-		if (*source) != nil {
-			protoTradeItemList2 = make([]proto.TradeItem, len((*source)))
-			for i := 0; i < len((*source)); i++ {
-				protoTradeItem, err := ParseShipMountDeposit((*source)[i])
-				if err != nil {
-					return protoTradeItemList, err
-				}
-				protoTradeItemList2[i] = protoTradeItem
-			}
-		}
-		protoTradeItemList = protoTradeItemList2
-	}
-	return protoTradeItemList, nil
-}
-func ConvertShipReactor(source api.ShipReactor) (*proto.ReactorComponent, error) {
-	var protoReactorComponent proto.ReactorComponent
-	protoReactorComponent.Name = source.Name
-	protoReactorComponent.Description = source.Description
-	protoReactorComponent.Requirements = apiShipRequirementsToPProtoModuleRequirements(source.Requirements)
-	protoReactorComponent_Type, err := ParseShipReactorType(source.Symbol)
-	if err != nil {
-		return nil, err
-	}
-	protoReactorComponent.Type = protoReactorComponent_Type
-	protoReactorComponent.Degradation = apiShipReactorToPProtoModuleDegradable(source)
-	protoReactorComponent.PowerOutput = IntToInt32(source.PowerOutput)
-	return &protoReactorComponent, nil
 }
 func ConvertShipRole(source api.ShipRole) (proto.Ship_Role, error) {
 	var protoShip_Role proto.Ship_Role
@@ -354,87 +171,6 @@ func ConvertStatus(source *api.Status) *proto.ServerStatus {
 	}
 	return pProtoServerStatus
 }
-func apiCooldownToPProtoShip_Cooldown(source api.Cooldown) *proto.Ship_Cooldown {
-	var protoShip_Cooldown proto.Ship_Cooldown
-	protoShip_Cooldown.TotalSeconds = IntToInt32(source.TotalSeconds)
-	protoShip_Cooldown.RemainingSeconds = IntToInt32(source.RemainingSeconds)
-	protoShip_Cooldown.Expiration = ParseTimestampOptional(source.Expiration)
-	return &protoShip_Cooldown
-}
-func apiShipCargoToPProtoShip_Cargo(source api.ShipCargo) (*proto.Ship_Cargo, error) {
-	var protoShip_Cargo proto.Ship_Cargo
-	protoShip_Cargo.Capacity = IntToInt32(source.Capacity)
-	protoShip_Cargo.Units = IntToInt32(source.Units)
-	if source.Inventory != nil {
-		protoShip_Cargo.Inventory = make([]*proto.Ship_Cargo_InventoryItem, len(source.Inventory))
-		for i := 0; i < len(source.Inventory); i++ {
-			pProtoShip_Cargo_InventoryItem, err := ConvertShipCargoItem(source.Inventory[i])
-			if err != nil {
-				return nil, err
-			}
-			protoShip_Cargo.Inventory[i] = pProtoShip_Cargo_InventoryItem
-		}
-	}
-	return &protoShip_Cargo, nil
-}
-func apiShipCrewToPProtoShip_Crew(source api.ShipCrew) (*proto.Ship_Crew, error) {
-	var protoShip_Crew proto.Ship_Crew
-	protoShip_Crew.Required = IntToInt32(source.Required)
-	protoShip_Crew.Capacity = IntToInt32(source.Capacity)
-	protoShip_Crew.Current = IntToInt32(source.Current)
-	protoShip_Crew_Rotation, err := ConvertShipCrewRotation(source.Rotation)
-	if err != nil {
-		return nil, err
-	}
-	protoShip_Crew.Rotation = protoShip_Crew_Rotation
-	protoShip_Crew.Morale = IntToInt32(source.Morale)
-	protoShip_Crew.Wages = IntToInt32(source.Wages)
-	return &protoShip_Crew, nil
-}
-func apiShipEngineToPProtoModuleDegradable(source api.ShipEngine) *proto.ModuleDegradable {
-	var protoModuleDegradable proto.ModuleDegradable
-	protoModuleDegradable.Condition = source.Condition
-	protoModuleDegradable.Integrity = source.Integrity
-	return &protoModuleDegradable
-}
-func apiShipFrameToPProtoModuleDegradable(source api.ShipFrame) *proto.ModuleDegradable {
-	var protoModuleDegradable proto.ModuleDegradable
-	protoModuleDegradable.Condition = source.Condition
-	protoModuleDegradable.Integrity = source.Integrity
-	return &protoModuleDegradable
-}
-func apiShipFuelToPProtoShip_Fuel(source api.ShipFuel) *proto.Ship_Fuel {
-	var protoShip_Fuel proto.Ship_Fuel
-	protoShip_Fuel.Capacity = IntToInt32(source.Capacity)
-	protoShip_Fuel.Current = IntToInt32(source.Current)
-	if source.Consumed != nil {
-		protoShip_Fuel_Consumption := unnamedToProtoShip_Fuel_Consumption((*source.Consumed))
-		protoShip_Fuel.Consumed = &protoShip_Fuel_Consumption
-	}
-	return &protoShip_Fuel
-}
-func apiShipReactorToPProtoModuleDegradable(source api.ShipReactor) *proto.ModuleDegradable {
-	var protoModuleDegradable proto.ModuleDegradable
-	protoModuleDegradable.Condition = source.Condition
-	protoModuleDegradable.Integrity = source.Integrity
-	return &protoModuleDegradable
-}
-func apiShipRequirementsToPProtoModuleRequirements(source api.ShipRequirements) *proto.ModuleRequirements {
-	var protoModuleRequirements proto.ModuleRequirements
-	if source.Power != nil {
-		xint32 := IntToInt32(*source.Power)
-		protoModuleRequirements.Power = &xint32
-	}
-	if source.Crew != nil {
-		xint322 := IntToInt32(*source.Crew)
-		protoModuleRequirements.Crew = &xint322
-	}
-	if source.Slots != nil {
-		xint323 := IntToInt32(*source.Slots)
-		protoModuleRequirements.Slots = &xint323
-	}
-	return &protoModuleRequirements
-}
 func unnamedToProtoServerStatus_Announcement(source struct {
 	Title string `json:"title"`
 	Body  string `json:"body"`
@@ -456,13 +192,4 @@ func unnamedToProtoServerStatus_GlobalStats(source struct {
 	protoServerStatus_GlobalStats.Waypoints = source.Waypoints
 	protoServerStatus_GlobalStats.Systems = source.Systems
 	return protoServerStatus_GlobalStats
-}
-func unnamedToProtoShip_Fuel_Consumption(source struct {
-	Amount    int       `json:"amount"`
-	Timestamp time.Time `json:"timestamp"`
-}) proto.Ship_Fuel_Consumption {
-	var protoShip_Fuel_Consumption proto.Ship_Fuel_Consumption
-	protoShip_Fuel_Consumption.Amount = IntToInt32(source.Amount)
-	protoShip_Fuel_Consumption.Timestamp = ParseTimestamp(source.Timestamp)
-	return protoShip_Fuel_Consumption
 }

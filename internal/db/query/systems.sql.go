@@ -9,6 +9,58 @@ import (
 	"context"
 )
 
+const getAllSystems = `-- name: GetAllSystems :many
+SELECT
+	  systems.symbol AS name
+	, systems.x AS x
+	, systems.y AS y
+	, COUNT(jump_gates.waypoint) > 0 AS has_jumpgates
+FROM systems
+JOIN waypoints
+	ON systems.symbol = waypoints.system
+LEFT JOIN jump_gates
+	ON waypoints.symbol = jump_gates.waypoint
+GROUP BY
+	  systems.symbol
+	, systems.x
+	, systems.y
+`
+
+type GetAllSystemsRow struct {
+	Name         string
+	X            int64
+	Y            int64
+	HasJumpgates bool
+}
+
+func (q *Queries) GetAllSystems(ctx context.Context) ([]GetAllSystemsRow, error) {
+	rows, err := q.query(ctx, q.getAllSystemsStmt, getAllSystems)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetAllSystemsRow{}
+	for rows.Next() {
+		var i GetAllSystemsRow
+		if err := rows.Scan(
+			&i.Name,
+			&i.X,
+			&i.Y,
+			&i.HasJumpgates,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getSystemByName = `-- name: GetSystemByName :one
 ;
 
@@ -26,56 +78,6 @@ func (q *Queries) GetSystemByName(ctx context.Context, systemName string) (GetSy
 	var i GetSystemByNameRow
 	err := row.Scan(&i.X, &i.Y)
 	return i, err
-}
-
-const getSystemsInRect = `-- name: GetSystemsInRect :many
-SELECT
-	symbol, x, y, type, factions
-FROM systems
-WHERE TRUE
-	AND x >= ?1 AND x <= ?2
-	AND y >= ?3 AND y <= ?4
-`
-
-type GetSystemsInRectParams struct {
-	XMin int64
-	XMax int64
-	YMin int64
-	YMax int64
-}
-
-func (q *Queries) GetSystemsInRect(ctx context.Context, arg GetSystemsInRectParams) ([]System, error) {
-	rows, err := q.query(ctx, q.getSystemsInRectStmt, getSystemsInRect,
-		arg.XMin,
-		arg.XMax,
-		arg.YMin,
-		arg.YMax,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []System{}
-	for rows.Next() {
-		var i System
-		if err := rows.Scan(
-			&i.Symbol,
-			&i.X,
-			&i.Y,
-			&i.Type,
-			&i.Factions,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }
 
 const hasSystemsRows = `-- name: HasSystemsRows :one

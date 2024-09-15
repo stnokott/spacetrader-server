@@ -1,3 +1,4 @@
+// Package cache implements several caches for API data.
 package cache
 
 import (
@@ -15,6 +16,10 @@ import (
 )
 
 var logger = log.ForComponent("cache")
+
+// TODO: system cache should store the time at which it created the cache.
+//       this should then be used to check on each startup whether the game was reset
+//       since last cache creation, thus requiring recreation of the cache.
 
 // SystemCache is a cache for galaxy systems.
 type SystemCache struct {
@@ -165,8 +170,7 @@ func (c SystemCache) populateJumpgateWaypoint(ctx context.Context, system string
 
 // FleetCache is an in-memory cache of all player-owned ships.
 type FleetCache struct {
-	Ships []*pb.Ship
-
+	Ships  []*pb.Ship
 	client *api.Client
 }
 
@@ -192,13 +196,14 @@ func (c *FleetCache) Create(ctx context.Context, progressChan chan<- float64) er
 		return fmt.Errorf("querying ships: %w", err)
 	}
 
-	if c.Ships, err = convert.ConvertShips(ships); err != nil {
-		return fmt.Errorf("converting ship: %w", err)
+	c.Ships, err = convert.ConvertShips(ships)
+	if err != nil {
+		return err
 	}
-	progressChan <- 1
 	return nil
 }
 
+/*
 // ShipByName returns a ship from the cache by its name.
 //
 // An error is returned when no ship with that name is found.
@@ -210,3 +215,4 @@ func (c *FleetCache) ShipByName(name string) (*pb.Ship, error) {
 	}
 	return nil, fmt.Errorf("no ship with name '%s' found", name)
 }
+*/

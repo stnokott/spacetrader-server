@@ -132,7 +132,7 @@ func (w *Worker) logState(ctx context.Context) {
 		case <-ticker.C:
 			currentJob := w.currentJob.Load()
 			if currentJob != "" {
-				logger.Infof("<%s> progress: %3.f%%", currentJob, w.currentProgress.Load()*100)
+				logger.Infof("<%s> progress: %0.f%%", currentJob, w.currentProgress.Load()*100)
 			} else {
 				logger.Debug("no jobs")
 			}

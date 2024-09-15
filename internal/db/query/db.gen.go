@@ -24,11 +24,11 @@ func New(db DBTX) *Queries {
 func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	q := Queries{db: db}
 	var err error
+	if q.getAllSystemsStmt, err = db.PrepareContext(ctx, getAllSystems); err != nil {
+		return nil, fmt.Errorf("error preparing query GetAllSystems: %w", err)
+	}
 	if q.getSystemByNameStmt, err = db.PrepareContext(ctx, getSystemByName); err != nil {
 		return nil, fmt.Errorf("error preparing query GetSystemByName: %w", err)
-	}
-	if q.getSystemsInRectStmt, err = db.PrepareContext(ctx, getSystemsInRect); err != nil {
-		return nil, fmt.Errorf("error preparing query GetSystemsInRect: %w", err)
 	}
 	if q.hasSystemsRowsStmt, err = db.PrepareContext(ctx, hasSystemsRows); err != nil {
 		return nil, fmt.Errorf("error preparing query HasSystemsRows: %w", err)
@@ -56,14 +56,14 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 
 func (q *Queries) Close() error {
 	var err error
+	if q.getAllSystemsStmt != nil {
+		if cerr := q.getAllSystemsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getAllSystemsStmt: %w", cerr)
+		}
+	}
 	if q.getSystemByNameStmt != nil {
 		if cerr := q.getSystemByNameStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getSystemByNameStmt: %w", cerr)
-		}
-	}
-	if q.getSystemsInRectStmt != nil {
-		if cerr := q.getSystemsInRectStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing getSystemsInRectStmt: %w", cerr)
 		}
 	}
 	if q.hasSystemsRowsStmt != nil {
@@ -140,8 +140,8 @@ func (q *Queries) queryRow(ctx context.Context, stmt *sql.Stmt, query string, ar
 type Queries struct {
 	db                    DBTX
 	tx                    *sql.Tx
+	getAllSystemsStmt     *sql.Stmt
 	getSystemByNameStmt   *sql.Stmt
-	getSystemsInRectStmt  *sql.Stmt
 	hasSystemsRowsStmt    *sql.Stmt
 	insertJumpGateStmt    *sql.Stmt
 	insertSystemStmt      *sql.Stmt
@@ -155,8 +155,8 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 	return &Queries{
 		db:                    tx,
 		tx:                    tx,
+		getAllSystemsStmt:     q.getAllSystemsStmt,
 		getSystemByNameStmt:   q.getSystemByNameStmt,
-		getSystemsInRectStmt:  q.getSystemsInRectStmt,
 		hasSystemsRowsStmt:    q.hasSystemsRowsStmt,
 		insertJumpGateStmt:    q.insertJumpGateStmt,
 		insertSystemStmt:      q.insertSystemStmt,
