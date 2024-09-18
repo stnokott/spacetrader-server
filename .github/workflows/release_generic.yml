@@ -42,8 +42,8 @@ jobs:
       - if: inputs.snapshot == true
         uses: actions/upload-artifact@v4
         with:
-          name: release-binary
+          name: release-archives
           path: |
             dist/*.zip
             dist/*.tar.gz
-          retention-days: 2
+          retention-days: 1
