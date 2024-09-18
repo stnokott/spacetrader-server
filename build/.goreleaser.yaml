@@ -4,17 +4,19 @@ project_name: spacetrader-server
 
 before:
   hooks:
-    - go mod tidy
-    - go mod verify
+    - go mod download
 builds:
-  - id: server
-    binary: server
+  - &build_common
+    id: linux
+    binary: "{{ .ProjectName }}"
     main: ./cmd
-    env:
-      - CGO_ENABLED=0
-    goos: ["linux", "windows"]
+    env: ["CGO_ENABLED=0"]
+    goos: ["linux"]
     goarch: ["amd64"]
-    ldflags: ["-s", "-w"] # -s and -w reduce binary size, but prevent debugging (not necessary for production build)
+    ldflags: ["-s", "-w"]
+  - <<: *build_common
+    id: windows
+    goos: ["windows"]
 
 changelog:
   sort: asc
