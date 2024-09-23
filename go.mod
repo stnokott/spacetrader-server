@@ -3,7 +3,7 @@ module github.com/stnokott/spacetrader-server
 go 1.23.0
 
 require (
-	github.com/go-resty/resty/v2 v2.15.0
+	github.com/go-resty/resty/v2 v2.15.2
 	github.com/golang-migrate/migrate/v4 v4.18.1
 	github.com/jinzhu/copier v0.4.0
 	github.com/joho/godotenv v1.5.1
