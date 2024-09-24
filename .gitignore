@@ -1,6 +1,6 @@
 # SQLite
 *.db
-*.db-journal
+*.db-*
 
 *.env
 
