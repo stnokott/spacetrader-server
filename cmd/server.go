@@ -33,8 +33,6 @@ type Server struct {
 	systemCache cache.SystemCache
 	fleetCache  *cache.FleetCache
 
-	worker *worker.Worker
-
 	pb.UnimplementedSpacetraderServer
 }
 
@@ -54,9 +52,6 @@ func New(baseURL string, token string, dbFile string) (*Server, error) {
 		return nil, err
 	}
 
-	worker := worker.NewWorker()
-	worker.Start(context.TODO(), true)
-
 	return &Server{
 		api:     client,
 		db:      db,
@@ -64,7 +59,6 @@ func New(baseURL string, token string, dbFile string) (*Server, error) {
 
 		systemCache: cache.NewSystemCache(client, db, q),
 		fleetCache:  cache.NewFleetCache(client),
-		worker:      worker,
 	}, nil
 }
 
@@ -126,13 +120,13 @@ func (s *Server) CreateCaches(ctxParent context.Context) error {
 	ctx, cancel := context.WithTimeout(ctxParent, indexTimeout)
 	defer cancel()
 
-	err := s.worker.AddAndWait(ctx, "create-system-cache", func(ctx context.Context, progressChan chan<- float64) error {
+	err := worker.AddAndWait(ctx, "create-system-cache", func(ctx context.Context, progressChan chan<- float64) error {
 		return s.systemCache.Create(ctx, progressChan)
 	})
 	if err != nil {
 		return err
 	}
-	err = s.worker.AddAndWait(ctx, "create-fleet-cache", func(ctx context.Context, progressChan chan<- float64) error {
+	err = worker.AddAndWait(ctx, "create-fleet-cache", func(ctx context.Context, progressChan chan<- float64) error {
 		return s.fleetCache.Create(ctx, progressChan)
 	})
 	if err != nil {
