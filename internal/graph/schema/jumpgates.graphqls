@@ -1,0 +1,14 @@
+type Jumpgate
+	@goExtraField(
+		name: "FromWaypointID"
+		type: "string"
+		description: "waypoint ID for resolving waypoint"
+  )
+	@goExtraField(
+		name: "ToWaypointID"
+		type: "string"
+		description: "waypoint ID for resolving waypoint"
+  ) {
+	from: Waypoint! @goField(forceResolver: true)
+	to: Waypoint! @goField(forceResolver: true)
+}

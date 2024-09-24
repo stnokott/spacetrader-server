@@ -5,20 +5,18 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"net"
+	"net/http"
 	"time"
 
+	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/stnokott/spacetrader-server/internal/api"
 	"github.com/stnokott/spacetrader-server/internal/cache"
-	"github.com/stnokott/spacetrader-server/internal/convert"
+	"github.com/stnokott/spacetrader-server/internal/graph"
+	"github.com/stnokott/spacetrader-server/internal/graph/loaders"
 	"github.com/stnokott/spacetrader-server/internal/log"
 	"github.com/stnokott/spacetrader-server/internal/worker"
-	"google.golang.org/grpc"
-
-	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/stnokott/spacetrader-server/internal/db/query"
-	pb "github.com/stnokott/spacetrader-server/internal/proto"
 )
 
 var logger = log.ForComponent("server")
@@ -28,14 +26,12 @@ type Server struct {
 	api     *api.Client
 	db      *sql.DB
 	queries *query.Queries
-	// TODO: check if api, db or query can be removed
+	// TODO: check if api or query can be removed
 
 	systemCache cache.SystemCache
 	fleetCache  *cache.FleetCache
 
 	worker *worker.Worker
-
-	pb.UnimplementedSpacetraderServer
 }
 
 // New creates and returns a new Client instance.
@@ -73,42 +69,45 @@ func (s *Server) Close() error {
 	return errors.Join(s.queries.Close(), s.db.Close())
 }
 
-// Listen starts the gRPC server on the specified port.
+// Listen starts the GraphQL server on the specified port and path (i.e. /graphql).
 //
-// It is blocking.
-func (s *Server) Listen(port int) error {
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
-	if err != nil {
-		return fmt.Errorf("TCP listen: %w", err)
-	}
-	srv := grpc.NewServer(
-		grpc.ChainStreamInterceptor(onGrpcStream),
-		grpc.ChainUnaryInterceptor(onGrpcUnary),
-	)
-	pb.RegisterSpacetraderServer(srv, s)
-	logger.Infof("gRPC server listening on port %d", port)
-	if err := srv.Serve(lis); err != nil {
-		return fmt.Errorf("TCP serve: %w", err)
-	}
-	return nil
-}
+// This function blocking.
+// When the context expires, the server will attempt to shutdown gracefully.
+func (s *Server) Listen(ctx context.Context, port int, path string) error {
+	srv := handler.NewDefaultServer(graph.NewExecutableSchema(graph.Config{Resolvers: graph.NewResolver(
+		s.api, s.queries, s.fleetCache,
+	)}))
 
-func onGrpcStream(srv any, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-	logger.Infof("gRPC call to %s", info.FullMethod)
-	err := handler(srv, stream)
-	if err != nil {
-		logger.Errorf("gRPC error streaming %s: %v", info.FullMethod, err)
-	}
-	return err
-}
+	var srvHandler http.Handler = srv
+	// wrap dataloader middleware for injecting dataloaders into request contexts
+	srvHandler = loaders.Middleware(s.queries, srvHandler)
 
-func onGrpcUnary(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
-	logger.Infof("gRPC call to %s", info.FullMethod)
-	resp, err = handler(ctx, req)
-	if err != nil {
-		logger.Errorf("gRPC error unary %s: %v", info.FullMethod, err)
+	mux := http.NewServeMux()
+	mux.Handle(path, srvHandler)
+
+	server := &http.Server{
+		Addr:    fmt.Sprintf(":%d", port),
+		Handler: mux,
 	}
-	return
+
+	serveErrChan := make(chan error, 0)
+	go func() {
+		logger.Infof("GraphQL server listening on :%d%s", port, path)
+		if err := server.ListenAndServe(); err != http.ErrServerClosed {
+			serveErrChan <- err
+			close(serveErrChan)
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+		logger.Info("shutting down gracefully")
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		return server.Shutdown(ctx)
+	case err := <-serveErrChan:
+		return err
+	}
 }
 
 // TODO: write functions for querying API stuff (e.g. getSystem)
@@ -140,80 +139,4 @@ func (s *Server) CreateCaches(ctxParent context.Context) error {
 	}
 
 	return nil
-}
-
-// Ping is used by clients to ensure this server is online.
-func (s *Server) Ping(_ context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
-	return &emptypb.Empty{}, nil
-}
-
-// GetServerStatus returns the current server status and some statistics.
-func (s *Server) GetServerStatus(ctx context.Context, _ *emptypb.Empty) (*pb.ServerStatus, error) {
-	result := new(api.Status)
-	if err := s.api.Get(ctx, result, "/"); err != nil {
-		return nil, err
-	}
-
-	return convert.ConvertStatus(result), nil
-}
-
-// GetCurrentAgent returns information about the agent identified by the current token.
-func (s *Server) GetCurrentAgent(ctx context.Context, _ *emptypb.Empty) (*pb.Agent, error) {
-	result := new(struct {
-		// for some reason, SpaceTraders decided it's a good idea to wrap the agent
-		// info in a useless "data" field.
-		Data api.Agent `json:"data"`
-	})
-	if err := s.api.Get(ctx, result, "/my/agent"); err != nil {
-		return nil, err
-	}
-
-	return convert.ConvertAgent(&result.Data)
-}
-
-// GetFleet returns the complete list of ships in the agent's posession.
-func (s *Server) GetFleet(ctx context.Context, _ *emptypb.Empty) (*pb.Fleet, error) {
-	if s.fleetCache.Ships == nil {
-		return nil, errors.New("fleet cache has not been initialized")
-	}
-	return &pb.Fleet{
-		Ships: s.fleetCache.Ships,
-	}, nil
-}
-
-// GetAllSystems streams all systems.
-func (s *Server) GetAllSystems(_ *emptypb.Empty, stream pb.Spacetrader_GetAllSystemsServer) error {
-	ctx, cancel := context.WithTimeout(stream.Context(), 10*time.Second)
-	defer cancel()
-
-	rows, err := s.queries.GetAllSystems(ctx)
-	if err != nil {
-		return fmt.Errorf("querying systems: %w", err)
-	}
-
-	shipMap := s.shipsPerSystem()
-
-	for _, row := range rows {
-		if err = stream.Send(&pb.GetAllSystemsResponseItem{
-			Name: row.Name,
-			Pos: &pb.Vector{
-				X: int32(row.X),
-				Y: int32(row.Y),
-			},
-			ShipCount:    int32(shipMap[row.Name]),
-			HasJumpgates: row.HasJumpgates,
-		}); err != nil {
-			return fmt.Errorf("sending system via gRPC: %w", err)
-		}
-	}
-	return nil
-}
-
-func (s *Server) shipsPerSystem() map[string]int {
-	m := map[string]int{}
-
-	for _, ship := range s.fleetCache.Ships {
-		m[ship.CurrentLocation.System]++
-	}
-	return m
 }

@@ -7,46 +7,54 @@ package query
 
 import (
 	"context"
+	"strings"
 )
 
-const getAllSystems = `-- name: GetAllSystems :many
+const getSystemCount = `-- name: GetSystemCount :one
 SELECT
-	  systems.symbol AS name
-	, systems.x AS x
-	, systems.y AS y
-	, COUNT(jump_gates.waypoint) > 0 AS has_jumpgates
+	COUNT(*) AS n
 FROM systems
-JOIN waypoints
-	ON systems.symbol = waypoints.system
-LEFT JOIN jump_gates
-	ON waypoints.symbol = jump_gates.waypoint
-GROUP BY
-	  systems.symbol
-	, systems.x
-	, systems.y
 `
 
-type GetAllSystemsRow struct {
-	Name         string
-	X            int64
-	Y            int64
-	HasJumpgates bool
+func (q *Queries) GetSystemCount(ctx context.Context) (int64, error) {
+	row := q.queryRow(ctx, q.getSystemCountStmt, getSystemCount)
+	var n int64
+	err := row.Scan(&n)
+	return n, err
 }
 
-func (q *Queries) GetAllSystems(ctx context.Context) ([]GetAllSystemsRow, error) {
-	rows, err := q.query(ctx, q.getAllSystemsStmt, getAllSystems)
+const getSystemsByName = `-- name: GetSystemsByName :many
+;
+
+SELECT symbol, x, y, type, factions FROM systems
+WHERE symbol IN (/*SLICE:system_ids*/?)
+`
+
+func (q *Queries) GetSystemsByName(ctx context.Context, systemIds []string) ([]System, error) {
+	query := getSystemsByName
+	var queryParams []interface{}
+	if len(systemIds) > 0 {
+		for _, v := range systemIds {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:system_ids*/?", strings.Repeat(",?", len(systemIds))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:system_ids*/?", "NULL", 1)
+	}
+	rows, err := q.query(ctx, nil, query, queryParams...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []GetAllSystemsRow{}
+	items := []System{}
 	for rows.Next() {
-		var i GetAllSystemsRow
+		var i System
 		if err := rows.Scan(
-			&i.Name,
+			&i.Symbol,
 			&i.X,
 			&i.Y,
-			&i.HasJumpgates,
+			&i.Type,
+			&i.Factions,
 		); err != nil {
 			return nil, err
 		}
@@ -61,23 +69,48 @@ func (q *Queries) GetAllSystems(ctx context.Context) ([]GetAllSystemsRow, error)
 	return items, nil
 }
 
-const getSystemByName = `-- name: GetSystemByName :one
+const getSystemsOffset = `-- name: GetSystemsOffset :many
 ;
 
-SELECT x, y FROM systems
-WHERE symbol = ?1
+SELECT
+	symbol, x, y, type, factions
+FROM systems
+ORDER BY symbol
+LIMIT ?2 OFFSET ?1
 `
 
-type GetSystemByNameRow struct {
-	X int64
-	Y int64
+type GetSystemsOffsetParams struct {
+	Offset int64
+	Limit  int64
 }
 
-func (q *Queries) GetSystemByName(ctx context.Context, systemName string) (GetSystemByNameRow, error) {
-	row := q.queryRow(ctx, q.getSystemByNameStmt, getSystemByName, systemName)
-	var i GetSystemByNameRow
-	err := row.Scan(&i.X, &i.Y)
-	return i, err
+func (q *Queries) GetSystemsOffset(ctx context.Context, arg GetSystemsOffsetParams) ([]System, error) {
+	rows, err := q.query(ctx, q.getSystemsOffsetStmt, getSystemsOffset, arg.Offset, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []System{}
+	for rows.Next() {
+		var i System
+		if err := rows.Scan(
+			&i.Symbol,
+			&i.X,
+			&i.Y,
+			&i.Type,
+			&i.Factions,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const hasSystemsRows = `-- name: HasSystemsRows :one

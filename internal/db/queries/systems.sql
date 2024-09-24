@@ -11,23 +11,20 @@ INSERT INTO systems (
 -- name: TruncateSystems :exec
 DELETE FROM systems;
 
--- name: GetAllSystems :many
+-- name: GetSystemCount :one
 SELECT
-	  systems.symbol AS name
-	, systems.x AS x
-	, systems.y AS y
-	, COUNT(jump_gates.waypoint) > 0 AS has_jumpgates
+	COUNT(*) AS n
 FROM systems
-JOIN waypoints
-	ON systems.symbol = waypoints.system
-LEFT JOIN jump_gates
-	ON waypoints.symbol = jump_gates.waypoint
-GROUP BY
-	  systems.symbol
-	, systems.x
-	, systems.y
 ;
 
--- name: GetSystemByName :one
-SELECT x, y FROM systems
-WHERE symbol = sqlc.arg(system_name);
+-- name: GetSystemsOffset :many
+SELECT
+	*
+FROM systems
+ORDER BY symbol
+LIMIT sqlc.arg(limit) OFFSET sqlc.arg(offset)
+;
+
+-- name: GetSystemsByName :many
+SELECT * FROM systems
+WHERE symbol IN (sqlc.slice(system_ids));

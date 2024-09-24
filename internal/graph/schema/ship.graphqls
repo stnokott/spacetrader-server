@@ -1,0 +1,40 @@
+enum ShipRole @goModel(model: "github.com/stnokott/spacetrader-server/internal/api.ShipRole") {
+    CARRIER @goEnum(value: "github.com/stnokott/spacetrader-server/internal/api.ShipRoleCARRIER")
+    COMMAND @goEnum(value: "github.com/stnokott/spacetrader-server/internal/api.ShipRoleCOMMAND")
+    EXCAVATOR @goEnum(value: "github.com/stnokott/spacetrader-server/internal/api.ShipRoleEXCAVATOR")
+    EXPLORER @goEnum(value: "github.com/stnokott/spacetrader-server/internal/api.ShipRoleEXPLORER")
+    FABRICATOR @goEnum(value: "github.com/stnokott/spacetrader-server/internal/api.ShipRoleFABRICATOR")
+    HARVESTER @goEnum(value: "github.com/stnokott/spacetrader-server/internal/api.ShipRoleHARVESTER")
+    HAULER @goEnum(value: "github.com/stnokott/spacetrader-server/internal/api.ShipRoleHAULER")
+    INTERCEPTOR @goEnum(value: "github.com/stnokott/spacetrader-server/internal/api.ShipRoleINTERCEPTOR")
+    PATROL @goEnum(value: "github.com/stnokott/spacetrader-server/internal/api.ShipRolePATROL")
+    REFINERY @goEnum(value: "github.com/stnokott/spacetrader-server/internal/api.ShipRoleREFINERY")
+    REPAIR @goEnum(value: "github.com/stnokott/spacetrader-server/internal/api.ShipRoleREPAIR")
+    SATELLITE @goEnum(value: "github.com/stnokott/spacetrader-server/internal/api.ShipRoleSATELLITE")
+    SURVEYOR @goEnum(value: "github.com/stnokott/spacetrader-server/internal/api.ShipRoleSURVEYOR")
+    TRANSPORT @goEnum(value: "github.com/stnokott/spacetrader-server/internal/api.ShipRoleTRANSPORT")
+}
+
+enum ShipStatus @goModel(model: "github.com/stnokott/spacetrader-server/internal/api.ShipNavStatus") {
+    DOCKED @goEnum(value: "github.com/stnokott/spacetrader-server/internal/api.DOCKED")
+    IN_ORBIT @goEnum(value: "github.com/stnokott/spacetrader-server/internal/api.INORBIT")
+    IN_TRANSIT @goEnum(value: "github.com/stnokott/spacetrader-server/internal/api.INTRANSIT")
+}
+
+type Ship
+    @goExtraField(
+        name: "SystemID"
+        type: "string"
+        description: "system ID for resolving system"
+    )
+    @goExtraField(
+        name: "WaypointID"
+        type: "string"
+        description: "waypoint ID for resolving waypoint"
+    ) {
+	name: String!
+	role: ShipRole!
+    status: ShipStatus!
+    system: System! @goField(forceResolver: true)
+    waypoint: Waypoint! @goField(forceResolver: true)
+}

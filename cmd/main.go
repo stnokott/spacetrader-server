@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/signal"
 
 	"github.com/stnokott/spacetrader-server/internal/config"
 )
@@ -44,6 +45,10 @@ func main() {
 		return
 	}
 
-	logger.Fatal(s.Listen(55555)) // TODO: configure port from env
-	// TODO: graceful shutdown
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+	if err := s.Listen(ctx, 55555, "/graphql"); err != nil {
+		logger.Fatal(err)
+	}
+	// TODO: configure port from env
 }

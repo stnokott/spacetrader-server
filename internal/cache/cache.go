@@ -11,8 +11,8 @@ import (
 	"github.com/stnokott/spacetrader-server/internal/api"
 	"github.com/stnokott/spacetrader-server/internal/convert"
 	"github.com/stnokott/spacetrader-server/internal/db/query"
+	"github.com/stnokott/spacetrader-server/internal/graph/model"
 	"github.com/stnokott/spacetrader-server/internal/log"
-	pb "github.com/stnokott/spacetrader-server/internal/proto"
 )
 
 var logger = log.ForComponent("cache")
@@ -28,6 +28,7 @@ type SystemCache struct {
 	queries *query.Queries
 }
 
+// NewSystemCache creates a new system cache instance.
 func NewSystemCache(client *api.Client, db *sql.DB, queries *query.Queries) SystemCache {
 	return SystemCache{
 		client:  client,
@@ -170,7 +171,7 @@ func (c SystemCache) populateJumpgateWaypoint(ctx context.Context, system string
 
 // FleetCache is an in-memory cache of all player-owned ships.
 type FleetCache struct {
-	Ships  []*pb.Ship
+	Ships  []*model.Ship
 	client *api.Client
 }
 
@@ -202,17 +203,3 @@ func (c *FleetCache) Create(ctx context.Context, progressChan chan<- float64) er
 	}
 	return nil
 }
-
-/*
-// ShipByName returns a ship from the cache by its name.
-//
-// An error is returned when no ship with that name is found.
-func (c *FleetCache) ShipByName(name string) (*pb.Ship, error) {
-	for _, ship := range c.Ships {
-		if ship.Id == name {
-			return ship, nil
-		}
-	}
-	return nil, fmt.Errorf("no ship with name '%s' found", name)
-}
-*/

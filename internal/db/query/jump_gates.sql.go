@@ -9,6 +9,40 @@ import (
 	"context"
 )
 
+const getJumpgatesInSystem = `-- name: GetJumpgatesInSystem :many
+SELECT
+	waypoint, connects_to
+FROM jump_gates
+WHERE waypoint IN (
+	SELECT symbol
+	FROM waypoints
+	WHERE system = ?1
+)
+`
+
+func (q *Queries) GetJumpgatesInSystem(ctx context.Context, systemID string) ([]JumpGate, error) {
+	rows, err := q.query(ctx, q.getJumpgatesInSystemStmt, getJumpgatesInSystem, systemID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []JumpGate{}
+	for rows.Next() {
+		var i JumpGate
+		if err := rows.Scan(&i.Waypoint, &i.ConnectsTo); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const insertJumpGate = `-- name: InsertJumpGate :exec
 INSERT INTO jump_gates (
 	waypoint, connects_to

@@ -7,7 +7,88 @@ package query
 
 import (
 	"context"
+	"strings"
 )
+
+const getWaypointsByName = `-- name: GetWaypointsByName :many
+SELECT symbol, system, orbits, x, y, type FROM waypoints
+WHERE symbol IN (/*SLICE:waypoint_ids*/?)
+`
+
+func (q *Queries) GetWaypointsByName(ctx context.Context, waypointIds []string) ([]Waypoint, error) {
+	query := getWaypointsByName
+	var queryParams []interface{}
+	if len(waypointIds) > 0 {
+		for _, v := range waypointIds {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:waypoint_ids*/?", strings.Repeat(",?", len(waypointIds))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:waypoint_ids*/?", "NULL", 1)
+	}
+	rows, err := q.query(ctx, nil, query, queryParams...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Waypoint{}
+	for rows.Next() {
+		var i Waypoint
+		if err := rows.Scan(
+			&i.Symbol,
+			&i.System,
+			&i.Orbits,
+			&i.X,
+			&i.Y,
+			&i.Type,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getWaypointsForSystem = `-- name: GetWaypointsForSystem :many
+SELECT symbol, system, orbits, x, y, type FROM waypoints
+WHERE system = ?1
+`
+
+func (q *Queries) GetWaypointsForSystem(ctx context.Context, systemName string) ([]Waypoint, error) {
+	rows, err := q.query(ctx, q.getWaypointsForSystemStmt, getWaypointsForSystem, systemName)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Waypoint{}
+	for rows.Next() {
+		var i Waypoint
+		if err := rows.Scan(
+			&i.Symbol,
+			&i.System,
+			&i.Orbits,
+			&i.X,
+			&i.Y,
+			&i.Type,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
 
 const insertWaypoint = `-- name: InsertWaypoint :exec
 INSERT INTO waypoints (
