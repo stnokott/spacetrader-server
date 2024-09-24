@@ -19,7 +19,7 @@ type Worker struct {
 	queue chan queueItem
 	// index keeps track of the job names in the queue and maps them to their respective result channel.
 	// Jobs are kept here until they have finished processing.
-	index *syncx.Map[string, chan error]
+	index syncx.Map[string, chan error]
 
 	currentJob      atomic.String
 	currentProgress atomic.Float64
