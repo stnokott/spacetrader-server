@@ -9,7 +9,7 @@ import (
 )
 
 func newDB(file string) (*sql.DB, error) {
-	conn, err := sql.Open("sqlite", fmt.Sprintf("file:%s?_pragma=journal_mode(WAL)&_pragma=foreign_keys(1)", file))
+	conn, err := sql.Open("sqlite", fmt.Sprintf("file:%s?_pragma=busy_timeout=10000&_pragma=journal_mode(WAL)&_pragma=foreign_keys(1)", file))
 	if err != nil {
 		return nil, fmt.Errorf("opening SQLite connection: %w", err)
 	}
