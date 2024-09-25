@@ -4,7 +4,7 @@ go 1.23.0
 
 require (
 	github.com/99designs/gqlgen v0.17.53
-	github.com/go-resty/resty/v2 v2.15.0
+	github.com/go-resty/resty/v2 v2.15.2
 	github.com/golang-migrate/migrate/v4 v4.18.1
 	github.com/jinzhu/copier v0.4.0
 	github.com/joho/godotenv v1.5.1
@@ -16,7 +16,6 @@ require (
 	github.com/vektah/gqlparser/v2 v2.5.16
 	github.com/vikstrous/dataloadgen v0.0.6
 	go-simpler.org/env v0.12.0
-	go.uber.org/atomic v1.11.0
 	go.uber.org/ratelimit v0.3.1
 	modernc.org/sqlite v1.33.1
 )
@@ -32,6 +31,7 @@ require (
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
+	github.com/kr/pretty v0.2.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/ncruces/go-strftime v0.1.9 // indirect
