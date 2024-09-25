@@ -30,8 +30,6 @@ type Server struct {
 
 	systemCache cache.SystemCache
 	fleetCache  *cache.FleetCache
-
-	worker *worker.Worker
 }
 
 // New creates and returns a new Client instance.
