@@ -2,48 +2,81 @@
 package convert
 
 import (
-	"fmt"
-	"math"
+	"strings"
+	"time"
+
+	"github.com/stnokott/spacetrader-server/internal/api"
+	"github.com/stnokott/spacetrader-server/internal/db/query"
+	"github.com/stnokott/spacetrader-server/internal/graph/model"
 )
 
-//go:generate go run github.com/jmattheis/goverter/cmd/goverter@v1.5.0 gen ./...
+// Converter converts between API responses and protobuf structs.
+// goverter:converter
+// goverter:output:package github.com/stnokott/spacetrader-server/internal/convert
+// goverter:output:file ./convert.gen.go
+// goverter:output:format function
+// goverter:ignoreUnexported yes
+// goverter:enum:unknown @error
+// goverter:extend IntTo.*
+// goverter:extend Int64To.*
+// goverter:extend Parse.*
+// goverter:extend TimeToTime
+type Converter interface {
+	// goverter:map LastReset.Time LastReset
+	// goverter:map Resets.Next NextReset
+	// goverter:map Statistics Stats
+	ConvertServerStatus(source *api.Status) *model.Server
 
-// IntToInt32 casts an int to an int64
-func IntToInt32(i int) int32 {
-	return int32(i)
+	// goverter:map Symbol Name
+	// goverter:map Headquarters Hq
+	ConvertAgent(source *api.Agent) *model.Agent
+
+	// goverter:map Registration.Name Name
+	// goverter:map Registration.Role Role
+	// goverter:map Nav.Status Status
+	// goverter:map Nav.SystemSymbol SystemID
+	// goverter:map Nav.WaypointSymbol WaypointID
+	// goverter:ignore System
+	// goverter:ignore Waypoint
+	ConvertShip(source *api.Ship) (*model.Ship, error)
+	ConvertShips(source []*api.Ship) ([]*model.Ship, error)
+
+	// goverter:map Symbol Name
+	// goverter:ignore Waypoints
+	// goverter:map Factions Factions | ParseFactions
+	// goverter:ignore HasJumpgates
+	ConvertSystem(source query.System) *model.System
+	ConvertSystems(source []query.System) []*model.System
+
+	// goverter:map Symbol Name
+	// goverter:map System SystemID
+	// goverter:ignore System
+	ConvertWaypoint(source query.Waypoint) *model.Waypoint
+	ConvertWaypoints(source []query.Waypoint) []*model.Waypoint
+
+	// goverter:ignore From
+	// goverter:ignore To
+	// goverter:map Waypoint FromWaypointID
+	// goverter:map ConnectsTo ToWaypointID
+	ConvertJumpgate(source query.JumpGate) *model.Jumpgate
+	ConvertJumpgates(source []query.JumpGate) []*model.Jumpgate
 }
 
-// IntToInt64 casts an int to an int64.
-func IntToInt64(i int) int64 {
-	return int64(i)
+// ParseFactions converts the concatenated factions from DB into a string slice.
+func ParseFactions(concat string) []api.FactionSymbol {
+	split := strings.Split(concat, ",")
+	if len(split) == 1 && split[0] == "" {
+		return []api.FactionSymbol{}
+	}
+	out := make([]api.FactionSymbol, len(split))
+	for i, x := range split {
+		out[i] = api.FactionSymbol(x)
+	}
+	return out
 }
 
-// IntToUint32 casts an int to an uint64.
-// It returns an error if i < 0.
-func IntToUint32(i int) (uint32, error) {
-	if i < 0 {
-		return 0, fmt.Errorf("integer %d < 0, cannot cast to uint32", i)
-	}
-	if i > math.MaxUint32 {
-		return 0, fmt.Errorf("integer %d > max uint32, cannot cast to uint32", i)
-	}
-	return uint32(i), nil
-}
-
-// IntToUint64 casts an int to an uint64.
-// It returns an error if i < 0.
-func IntToUint64(i int) (uint64, error) {
-	if i < 0 {
-		return 0, fmt.Errorf("integer %d < 0, cannot cast to uint64", i)
-	}
-	return uint64(i), nil
-}
-
-// Int64ToInt32 casts an int64 to an int32.
-// It returns an error if i does not fit in the int32 range.
-func Int64ToInt32(i int64) (int32, error) {
-	if i < math.MinInt32 || i > math.MaxInt32 {
-		return 0, fmt.Errorf("converting int64 %d to int32 would cause overflow", i)
-	}
-	return int32(i), nil
+// TimeToTime is simple, but required since time.Time contains unexported fields which goverter
+// cannot convert.
+func TimeToTime(source time.Time) time.Time {
+	return source
 }

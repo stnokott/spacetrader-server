@@ -1,0 +1,7 @@
+scalar Int64
+
+type Agent {
+  name: String!
+  credits: Int64!
+  hq: String!
+}

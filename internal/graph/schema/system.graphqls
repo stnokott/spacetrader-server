@@ -1,0 +1,22 @@
+enum SystemType @goModel(model: "github.com/stnokott/spacetrader-server/internal/api.SystemType") {
+    BLACK_HOLE @goEnum(value: "github.com/stnokott/spacetrader-server/internal/api.SystemTypeBLACKHOLE")
+		BLUE_STAR @goEnum(value: "github.com/stnokott/spacetrader-server/internal/api.SystemTypeBLUESTAR")
+		HYPERGIANT @goEnum(value: "github.com/stnokott/spacetrader-server/internal/api.SystemTypeHYPERGIANT")
+		NEBULA @goEnum(value: "github.com/stnokott/spacetrader-server/internal/api.SystemTypeNEBULA")
+		NEUTRON_STAR @goEnum(value: "github.com/stnokott/spacetrader-server/internal/api.SystemTypeNEUTRONSTAR")
+		ORANGE_STAR @goEnum(value: "github.com/stnokott/spacetrader-server/internal/api.SystemTypeORANGESTAR")
+		RED_STAR @goEnum(value: "github.com/stnokott/spacetrader-server/internal/api.SystemTypeREDSTAR")
+		UNSTABLE @goEnum(value: "github.com/stnokott/spacetrader-server/internal/api.SystemTypeUNSTABLE")
+		WHITE_DWARF @goEnum(value: "github.com/stnokott/spacetrader-server/internal/api.SystemTypeWHITEDWARF")
+		YOUNG_STAR @goEnum(value: "github.com/stnokott/spacetrader-server/internal/api.SystemTypeYOUNGSTAR")
+}
+
+type System {
+	name: String!
+	type: SystemType!
+	x: Int!
+	y: Int!
+	waypoints: [Waypoint!]! @goField(forceResolver: true)
+	factions: [Faction!]!
+	hasJumpgates: Boolean! @goField(forceResolver: true)
+}

@@ -1,0 +1,21 @@
+scalar Time
+
+type Server {
+  version: String!
+  lastReset: Time!
+  nextReset: Time!
+  stats: ServerStats!
+  announcements: [ServerAnnouncement!]!
+}
+
+type ServerStats {
+  agents: Int!
+  ships: Int!
+  systems: Int!
+  waypoints: Int!
+}
+
+type ServerAnnouncement {
+  title: String!
+  body: String!
+}

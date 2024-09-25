@@ -5,34 +5,33 @@ import (
 	"math/rand"
 	"strconv"
 
-	pb "github.com/stnokott/spacetrader-server/internal/proto"
+	"github.com/stnokott/spacetrader-server/internal/api"
+	"github.com/stnokott/spacetrader-server/internal/graph/model"
 )
 
 // GenerateSystems creates an artifial list of systems with a specified length.
 // The coordinates of each system are randomly generated between coordMin and coordMax.
-func GenerateSystems(count int, coordMin int, coordMax int) []*pb.System {
-	systems := make([]*pb.System, count)
+func GenerateSystems(count int, coordMin int, coordMax int) []*model.System {
+	systems := make([]*model.System, count)
 	for i := range systems {
 		systemName := GenerateSystemName(count, i)
-		systems[i] = &pb.System{
-			Id:       systemName,
-			X:        int32(coordMin + rand.Intn(coordMax-coordMin)),
-			Y:        int32(coordMin + rand.Intn(coordMax-coordMin)),
-			Type:     pb.System_Type(int(pb.System_UNKNOWN_SYSTEMTYPE) + rand.Intn(int(pb.System_UNSTABLE))),
-			Factions: []pb.Faction{},
-			Waypoints: []*pb.WaypointBase{
+		systems[i] = &model.System{
+			Name:     systemName,
+			X:        coordMin + rand.Intn(coordMax-coordMin),
+			Y:        coordMin + rand.Intn(coordMax-coordMin),
+			Type:     api.SystemTypeBLACKHOLE,
+			Factions: []api.FactionSymbol{},
+			Waypoints: []*model.Waypoint{
 				{
-					Id:     systemName + "-WP",
-					System: systemName,
+					Name:   systemName + "-WP",
+					System: nil,
 					X:      0,
 					Y:      0,
 				},
 			},
 		}
 		if rand.Float64() > 0.75 {
-			systems[i].Factions = []pb.Faction{
-				pb.Faction(int(pb.Faction_UNKNOWN_FACTION) + rand.Intn(int(pb.Faction_ETHEREAL))),
-			}
+			systems[i].Factions = []api.FactionSymbol{api.FactionSymbolASTRO}
 		}
 	}
 	return systems
