@@ -47,25 +47,6 @@ func (s *waypointLoader) getWaypoints(ctx context.Context, waypointIDs []string)
 	return convert.ConvertWaypoints(waypoints), nil
 }
 
-type jumpgateLoader struct {
-	db *query.Queries
-}
-
-func (j *jumpgateLoader) getJumpgates(ctx context.Context, systemIDs []string) ([][]*model.Jumpgate, []error) {
-	out := make([][]*model.Jumpgate, len(systemIDs))
-	errs := make([]error, len(systemIDs))
-
-	for i, systemID := range systemIDs {
-		if jumpgates, err := j.db.GetJumpgatesInSystem(ctx, systemID); err != nil {
-			errs[i] = err
-		} else {
-			out[i] = convert.ConvertJumpgates(jumpgates)
-		}
-	}
-
-	return out, errs
-}
-
 // Loaders wrap data loaders to inject via middleware
 type Loaders struct {
 	SystemLoader    *dataloadgen.Loader[string, *model.System]
@@ -78,11 +59,9 @@ func NewLoaders(db *query.Queries) *Loaders {
 	// define the data loader
 	sr := &systemLoader{db: db}
 	wr := &waypointLoader{db: db}
-	jr := &jumpgateLoader{db: db}
 	return &Loaders{
 		SystemLoader:    dataloadgen.NewLoader(sr.getSystems, dataloadgen.WithWait(loaderWait)),
 		WaypointsLoader: dataloadgen.NewLoader(wr.getWaypoints, dataloadgen.WithWait(loaderWait)),
-		JumpgatesLoader: dataloadgen.NewLoader(jr.getJumpgates, dataloadgen.WithWait(loaderWait)),
 	}
 }
 
@@ -111,10 +90,4 @@ func GetSystem(ctx context.Context, systemID string) (*model.System, error) {
 func GetWaypoint(ctx context.Context, waypointID string) (*model.Waypoint, error) {
 	loaders := For(ctx)
 	return loaders.WaypointsLoader.Load(ctx, waypointID)
-}
-
-// GetJumpgates returns the jumpgates in a system efficiently
-func GetJumpgates(ctx context.Context, systemID string) ([]*model.Jumpgate, error) {
-	loaders := For(ctx)
-	return loaders.JumpgatesLoader.Load(ctx, systemID)
 }

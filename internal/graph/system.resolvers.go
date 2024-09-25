@@ -9,7 +9,6 @@ import (
 	"fmt"
 
 	"github.com/stnokott/spacetrader-server/internal/convert"
-	"github.com/stnokott/spacetrader-server/internal/graph/loaders"
 	"github.com/stnokott/spacetrader-server/internal/graph/model"
 )
 
@@ -20,15 +19,6 @@ func (r *systemResolver) Waypoints(ctx context.Context, obj *model.System) ([]*m
 		return nil, fmt.Errorf("querying waypoints for system %s: %w", obj.Name, err)
 	}
 	return convert.ConvertWaypoints(waypoints), nil
-}
-
-// HasJumpgates is the resolver for the hasJumpgates field.
-func (r *systemResolver) HasJumpgates(ctx context.Context, obj *model.System) (bool, error) {
-	jumpgates, err := loaders.GetJumpgates(ctx, obj.Name)
-	if err != nil {
-		return false, fmt.Errorf("querying jumpgates for system %s: %w", obj.Name, err)
-	}
-	return len(jumpgates) > 0, nil
 }
 
 // System returns SystemResolver implementation.

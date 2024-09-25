@@ -8,12 +8,8 @@ INSERT INTO jump_gates (
 -- name: TruncateJumpGates :exec
 DELETE FROM jump_gates;
 
--- name: GetJumpgatesInSystem :many
+-- name: GetConnectionsForWaypoint :many
 SELECT
-	*
+	connects_to AS connected_wp
 FROM jump_gates
-WHERE waypoint IN (
-	SELECT symbol
-	FROM waypoints
-	WHERE system = sqlc.arg(system_id)
-);
+WHERE waypoint = sqlc.arg(waypoint);

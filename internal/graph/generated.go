@@ -79,11 +79,11 @@ type ShipResolver interface {
 }
 type SystemResolver interface {
 	Waypoints(ctx context.Context, obj *model.System) ([]*model.Waypoint, error)
-
-	HasJumpgates(ctx context.Context, obj *model.System) (bool, error)
 }
 type WaypointResolver interface {
 	System(ctx context.Context, obj *model.Waypoint) (*model.System, error)
+
+	ConnectedTo(ctx context.Context, obj *model.Waypoint) ([]*model.Waypoint, error)
 }
 
 type executableSchema struct {
@@ -538,6 +538,8 @@ func (ec *executionContext) fieldContext_Jumpgate_from(_ context.Context, field 
 				return ec.fieldContext_Waypoint_x(ctx, field)
 			case "y":
 				return ec.fieldContext_Waypoint_y(ctx, field)
+			case "connectedTo":
+				return ec.fieldContext_Waypoint_connectedTo(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Waypoint", field.Name)
 		},
@@ -594,6 +596,8 @@ func (ec *executionContext) fieldContext_Jumpgate_to(_ context.Context, field gr
 				return ec.fieldContext_Waypoint_x(ctx, field)
 			case "y":
 				return ec.fieldContext_Waypoint_y(ctx, field)
+			case "connectedTo":
+				return ec.fieldContext_Waypoint_connectedTo(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Waypoint", field.Name)
 		},
@@ -1849,8 +1853,6 @@ func (ec *executionContext) fieldContext_Ship_system(_ context.Context, field gr
 				return ec.fieldContext_System_waypoints(ctx, field)
 			case "factions":
 				return ec.fieldContext_System_factions(ctx, field)
-			case "hasJumpgates":
-				return ec.fieldContext_System_hasJumpgates(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type System", field.Name)
 		},
@@ -1907,6 +1909,8 @@ func (ec *executionContext) fieldContext_Ship_waypoint(_ context.Context, field 
 				return ec.fieldContext_Waypoint_x(ctx, field)
 			case "y":
 				return ec.fieldContext_Waypoint_y(ctx, field)
+			case "connectedTo":
+				return ec.fieldContext_Waypoint_connectedTo(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Waypoint", field.Name)
 		},
@@ -2139,6 +2143,8 @@ func (ec *executionContext) fieldContext_System_waypoints(_ context.Context, fie
 				return ec.fieldContext_Waypoint_x(ctx, field)
 			case "y":
 				return ec.fieldContext_Waypoint_y(ctx, field)
+			case "connectedTo":
+				return ec.fieldContext_Waypoint_connectedTo(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Waypoint", field.Name)
 		},
@@ -2185,50 +2191,6 @@ func (ec *executionContext) fieldContext_System_factions(_ context.Context, fiel
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Faction does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _System_hasJumpgates(ctx context.Context, field graphql.CollectedField, obj *model.System) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_System_hasJumpgates(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.System().HasJumpgates(rctx, obj)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(bool)
-	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_System_hasJumpgates(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "System",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -2432,8 +2394,6 @@ func (ec *executionContext) fieldContext_SystemEdge_node(_ context.Context, fiel
 				return ec.fieldContext_System_waypoints(ctx, field)
 			case "factions":
 				return ec.fieldContext_System_factions(ctx, field)
-			case "hasJumpgates":
-				return ec.fieldContext_System_hasJumpgates(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type System", field.Name)
 		},
@@ -2536,8 +2496,6 @@ func (ec *executionContext) fieldContext_Waypoint_system(_ context.Context, fiel
 				return ec.fieldContext_System_waypoints(ctx, field)
 			case "factions":
 				return ec.fieldContext_System_factions(ctx, field)
-			case "hasJumpgates":
-				return ec.fieldContext_System_hasJumpgates(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type System", field.Name)
 		},
@@ -2672,6 +2630,61 @@ func (ec *executionContext) fieldContext_Waypoint_y(_ context.Context, field gra
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Waypoint_connectedTo(ctx context.Context, field graphql.CollectedField, obj *model.Waypoint) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Waypoint_connectedTo(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Waypoint().ConnectedTo(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*model.Waypoint)
+	fc.Result = res
+	return ec.marshalOWaypoint2ᚕᚖgithubᚗcomᚋstnokottᚋspacetraderᚑserverᚋinternalᚋgraphᚋmodelᚐWaypointᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Waypoint_connectedTo(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Waypoint",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_Waypoint_name(ctx, field)
+			case "system":
+				return ec.fieldContext_Waypoint_system(ctx, field)
+			case "type":
+				return ec.fieldContext_Waypoint_type(ctx, field)
+			case "x":
+				return ec.fieldContext_Waypoint_x(ctx, field)
+			case "y":
+				return ec.fieldContext_Waypoint_y(ctx, field)
+			case "connectedTo":
+				return ec.fieldContext_Waypoint_connectedTo(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Waypoint", field.Name)
 		},
 	}
 	return fc, nil
@@ -5340,42 +5353,6 @@ func (ec *executionContext) _System(ctx context.Context, sel ast.SelectionSet, o
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "hasJumpgates":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._System_hasJumpgates(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -5551,6 +5528,39 @@ func (ec *executionContext) _Waypoint(ctx context.Context, sel ast.SelectionSet,
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "connectedTo":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Waypoint_connectedTo(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -6967,6 +6977,53 @@ func (ec *executionContext) marshalOString2ᚖstring(ctx context.Context, sel as
 	}
 	res := graphql.MarshalString(*v)
 	return res
+}
+
+func (ec *executionContext) marshalOWaypoint2ᚕᚖgithubᚗcomᚋstnokottᚋspacetraderᚑserverᚋinternalᚋgraphᚋmodelᚐWaypointᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Waypoint) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNWaypoint2ᚖgithubᚗcomᚋstnokottᚋspacetraderᚑserverᚋinternalᚋgraphᚋmodelᚐWaypoint(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) marshalO__EnumValue2ᚕgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐEnumValueᚄ(ctx context.Context, sel ast.SelectionSet, v []introspection.EnumValue) graphql.Marshaler {

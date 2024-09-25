@@ -21,6 +21,23 @@ func (r *waypointResolver) System(ctx context.Context, obj *model.Waypoint) (*mo
 	return system, nil
 }
 
+// ConnectedTo is the resolver for the connectedTo field.
+func (r *waypointResolver) ConnectedTo(ctx context.Context, obj *model.Waypoint) ([]*model.Waypoint, error) {
+	waypointIDs, err := r.db.GetConnectionsForWaypoint(ctx, obj.Name)
+	if err != nil {
+		return nil, fmt.Errorf("querying jumpgate connections for waypoint %s: %w", obj.Name, err)
+	}
+
+	out := make([]*model.Waypoint, len(waypointIDs))
+	loader := loaders.For(ctx)
+	for i, wpID := range waypointIDs {
+		if out[i], err = loader.WaypointsLoader.Load(ctx, wpID); err != nil {
+			return nil, err
+		}
+	}
+	return out, nil
+}
+
 // Waypoint returns WaypointResolver implementation.
 func (r *Resolver) Waypoint() WaypointResolver { return &waypointResolver{r} }
 

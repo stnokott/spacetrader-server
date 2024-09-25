@@ -26,4 +26,8 @@ type Waypoint
 	type: WaypointType!
 	x: Int!
 	y: Int!
+	"""
+  connectedTo is the list of waypoints connected via jumpgate or null if this waypoint is not of type jumpgate.
+  """
+	connectedTo: [Waypoint!] @goField(forceResolver: true)
 }

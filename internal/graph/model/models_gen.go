@@ -60,13 +60,12 @@ type Ship struct {
 }
 
 type System struct {
-	Name         string              `json:"name"`
-	Type         api.SystemType      `json:"type"`
-	X            int                 `json:"x"`
-	Y            int                 `json:"y"`
-	Waypoints    []*Waypoint         `json:"waypoints"`
-	Factions     []api.FactionSymbol `json:"factions"`
-	HasJumpgates bool                `json:"hasJumpgates"`
+	Name      string              `json:"name"`
+	Type      api.SystemType      `json:"type"`
+	X         int                 `json:"x"`
+	Y         int                 `json:"y"`
+	Waypoints []*Waypoint         `json:"waypoints"`
+	Factions  []api.FactionSymbol `json:"factions"`
 }
 
 type SystemConnection struct {
@@ -85,6 +84,8 @@ type Waypoint struct {
 	Type   api.WaypointType `json:"type"`
 	X      int              `json:"x"`
 	Y      int              `json:"y"`
+	// connectedTo is the list of waypoints connected via jumpgate or null if this waypoint is not of type jumpgate.
+	ConnectedTo []*Waypoint `json:"connectedTo,omitempty"`
 	// system ID for resolving system
 	SystemID string `json:"-"`
 }

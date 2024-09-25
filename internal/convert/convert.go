@@ -44,13 +44,13 @@ type Converter interface {
 	// goverter:map Symbol Name
 	// goverter:ignore Waypoints
 	// goverter:map Factions Factions | ParseFactions
-	// goverter:ignore HasJumpgates
 	ConvertSystem(source query.System) *model.System
 	ConvertSystems(source []query.System) []*model.System
 
 	// goverter:map Symbol Name
 	// goverter:map System SystemID
 	// goverter:ignore System
+	// goverter:ignore ConnectedTo
 	ConvertWaypoint(source query.Waypoint) *model.Waypoint
 	ConvertWaypoints(source []query.Waypoint) []*model.Waypoint
 
