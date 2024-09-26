@@ -60,6 +60,7 @@ func New(baseURL string, token string, dbFile string) (*Server, error) {
 
 // Close terminates all underlying connections.
 func (s *Server) Close() error {
+	logger.Info("closing database connection")
 	return errors.Join(s.queries.Close(), s.db.Close())
 }
 
@@ -95,7 +96,7 @@ func (s *Server) Listen(ctx context.Context, port int, path string) error {
 
 	select {
 	case <-ctx.Done():
-		logger.Info("shutting down gracefully")
+		logger.Info("shutting down GraphQL server")
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		return server.Shutdown(ctx)
