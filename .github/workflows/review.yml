@@ -13,7 +13,7 @@ jobs:
     name: golangci-lint
     steps:
       - name: Check out code into the Go module directory
-        uses: actions/checkout@v4.1.7
+        uses: actions/checkout@v4.2.0
       - name: Run golangci-lint with reviewdog
         uses: reviewdog/action-golangci-lint@v2.6.2
 
@@ -21,7 +21,7 @@ jobs:
     name: SonarCloud
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4.1.7
+      - uses: actions/checkout@v4.2.0
         with:
           fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
       - name: SonarCloud Scan
