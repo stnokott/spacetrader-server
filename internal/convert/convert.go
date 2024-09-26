@@ -44,6 +44,7 @@ type Converter interface {
 	// goverter:map Symbol Name
 	// goverter:ignore Waypoints
 	// goverter:map Factions Factions | ParseFactions
+	// goverter:ignore HasJumpgates
 	ConvertSystem(source query.System) *model.System
 	ConvertSystems(source []query.System) []*model.System
 
@@ -53,13 +54,6 @@ type Converter interface {
 	// goverter:ignore ConnectedTo
 	ConvertWaypoint(source query.Waypoint) *model.Waypoint
 	ConvertWaypoints(source []query.Waypoint) []*model.Waypoint
-
-	// goverter:ignore From
-	// goverter:ignore To
-	// goverter:map Waypoint FromWaypointID
-	// goverter:map ConnectsTo ToWaypointID
-	ConvertJumpgate(source query.JumpGate) *model.Jumpgate
-	ConvertJumpgates(source []query.JumpGate) []*model.Jumpgate
 }
 
 // ParseFactions converts the concatenated factions from DB into a string slice.

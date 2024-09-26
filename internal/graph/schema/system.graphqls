@@ -17,5 +17,6 @@ type System {
 	x: Int!
 	y: Int!
 	waypoints: [Waypoint!]! @goField(forceResolver: true)
+	hasJumpgates: Boolean! @goField(forceResolver: true)
 	factions: [Faction!]!
 }

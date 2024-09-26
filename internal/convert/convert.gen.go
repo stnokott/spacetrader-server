@@ -21,22 +21,6 @@ func ConvertAgent(source *api.Agent) *model.Agent {
 	}
 	return pModelAgent
 }
-func ConvertJumpgate(source query.JumpGate) *model.Jumpgate {
-	var modelJumpgate model.Jumpgate
-	modelJumpgate.FromWaypointID = source.Waypoint
-	modelJumpgate.ToWaypointID = source.ConnectsTo
-	return &modelJumpgate
-}
-func ConvertJumpgates(source []query.JumpGate) []*model.Jumpgate {
-	var pModelJumpgateList []*model.Jumpgate
-	if source != nil {
-		pModelJumpgateList = make([]*model.Jumpgate, len(source))
-		for i := 0; i < len(source); i++ {
-			pModelJumpgateList[i] = ConvertJumpgate(source[i])
-		}
-	}
-	return pModelJumpgateList
-}
 func ConvertServerStatus(source *api.Status) *model.Server {
 	var pModelServer *model.Server
 	if source != nil {

@@ -15,15 +15,6 @@ type Agent struct {
 	Hq      string `json:"hq"`
 }
 
-type Jumpgate struct {
-	From *Waypoint `json:"from"`
-	To   *Waypoint `json:"to"`
-	// waypoint ID for resolving waypoint
-	FromWaypointID string `json:"-"`
-	// waypoint ID for resolving waypoint
-	ToWaypointID string `json:"-"`
-}
-
 type Query struct {
 }
 
@@ -60,12 +51,13 @@ type Ship struct {
 }
 
 type System struct {
-	Name      string              `json:"name"`
-	Type      api.SystemType      `json:"type"`
-	X         int                 `json:"x"`
-	Y         int                 `json:"y"`
-	Waypoints []*Waypoint         `json:"waypoints"`
-	Factions  []api.FactionSymbol `json:"factions"`
+	Name         string              `json:"name"`
+	Type         api.SystemType      `json:"type"`
+	X            int                 `json:"x"`
+	Y            int                 `json:"y"`
+	Waypoints    []*Waypoint         `json:"waypoints"`
+	HasJumpgates bool                `json:"hasJumpgates"`
+	Factions     []api.FactionSymbol `json:"factions"`
 }
 
 type SystemConnection struct {

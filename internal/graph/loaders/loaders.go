@@ -51,7 +51,6 @@ func (s *waypointLoader) getWaypoints(ctx context.Context, waypointIDs []string)
 type Loaders struct {
 	SystemLoader    *dataloadgen.Loader[string, *model.System]
 	WaypointsLoader *dataloadgen.Loader[string, *model.Waypoint]
-	JumpgatesLoader *dataloadgen.Loader[string, []*model.Jumpgate]
 }
 
 // NewLoaders instantiates data loaders for the middleware
