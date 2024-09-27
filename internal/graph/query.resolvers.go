@@ -12,6 +12,7 @@ import (
 	"github.com/stnokott/spacetrader-server/internal/api"
 	"github.com/stnokott/spacetrader-server/internal/convert"
 	"github.com/stnokott/spacetrader-server/internal/db/query"
+	"github.com/stnokott/spacetrader-server/internal/graph/loaders"
 	"github.com/stnokott/spacetrader-server/internal/graph/model"
 )
 
@@ -40,7 +41,7 @@ func (r *queryResolver) Agent(ctx context.Context) (*model.Agent, error) {
 }
 
 // Ships is the resolver for the ships field.
-func (r *queryResolver) Ships(_ context.Context) ([]*model.Ship, error) {
+func (r *queryResolver) Ships(ctx context.Context) ([]*model.Ship, error) {
 	if r.fleetCache.Ships == nil {
 		return nil, errors.New("fleet cache has not been initialized")
 	}
@@ -84,6 +85,11 @@ func (r *queryResolver) Systems(ctx context.Context, page *paging.PageArgs) (out
 		Edges:    edges,
 	}
 	return
+}
+
+// System is the resolver for the system field.
+func (r *queryResolver) System(ctx context.Context, id string) (*model.System, error) {
+	return loaders.GetSystem(ctx, id)
 }
 
 // Query returns QueryResolver implementation.

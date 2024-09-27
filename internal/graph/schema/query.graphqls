@@ -29,6 +29,7 @@ type Query {
   agent: Agent!
   ships: [Ship!]!
   systems(page: PageArgs): SystemConnection!
+	system(id: String!): System!
 }
 
 type SystemEdge {
