@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"iter"
@@ -76,23 +77,40 @@ func newRateLimiter() ratelimit.Limiter {
 	return ratelimit.New(2, ratelimit.Per(1*time.Second))
 }
 
+// APIError is an error as returned by the API.
+type APIError struct {
+	// "{\"error\":{\"message\":\"Waypoint X1-KF5-E24Z is not accessible. Either the waypoint is uncharted or the agent has no ships present at the location.\",\"code\":4001,\"data\":{\"waypointSymbol\":\"X1-KF5-E24Z\"}}}"
+	Err struct {
+		Message string          `json:"message"`
+		Code    int             `json:"code"`
+		Data    json.RawMessage `json:"data"`
+	} `json:"error"`
+}
+
+func (e *APIError) Error() string {
+	return e.Err.Message
+}
+
 // Get is a generic utility function for reducing boilerplate client code.
-func (c *Client) Get(ctx context.Context, dst any, path string) (err error) {
-	defer func() {
-		if err != nil {
-			err = fmt.Errorf("%s: %w", path, err)
-		}
-	}()
-	req := c.r.R().SetResult(dst) // TODO: use SetError
+//
+// It will attempt to wrap any error into an *APIError.
+// When a non-nil error is returned, retrieve details like this:
+//
+//	err := Get(ctx, dst, path)
+//	if err != nil {
+//		errAPI := err.(*APIError)
+//	}
+func (c *Client) Get(ctx context.Context, dst any, path string) error {
+	req := c.r.R().SetResult(dst).SetError(&APIError{})
 	var resp *resty.Response
-	resp, err = req.SetContext(ctx).Get(path)
+	resp, err := req.SetContext(ctx).Get(path)
 	if err != nil {
-		return
+		return err
 	}
 	if !resp.IsSuccess() {
-		err = fmt.Errorf("unexpected status code %d", resp.StatusCode())
+		return resp.Error().(*APIError)
 	}
-	return
+	return nil
 }
 
 type pageFunc func(page int) (urlPath string)
