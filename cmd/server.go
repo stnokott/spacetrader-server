@@ -123,12 +123,12 @@ func (s *Server) CreateCaches(ctxParent context.Context) error {
 
 	if err := worker.AddAndWait(ctx, "create-system-cache", func(ctx context.Context, progressChan chan<- float64) error {
 		return s.systemCache.Create(ctx, progressChan)
-	}); err != nil {
+	}, worker.WithMaxLogFrequency(5*time.Second)); err != nil {
 		return err
 	}
 	if err := worker.AddAndWait(ctx, "create-jumpgate-cache", func(ctx context.Context, progressChan chan<- float64) error {
 		return s.jumpgateCache.Create(ctx, progressChan)
-	}); err != nil {
+	}, worker.WithMaxLogFrequency(5*time.Second)); err != nil {
 		return err
 	}
 	if err := worker.AddAndWait(ctx, "create-fleet-cache", func(ctx context.Context, progressChan chan<- float64) error {
