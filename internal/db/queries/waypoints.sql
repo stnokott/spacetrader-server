@@ -8,6 +8,10 @@ INSERT INTO waypoints (
 -- name: TruncateWaypoints :exec
 DELETE FROM waypoints;
 
+-- name: GetWaypointsByType :many
+SELECT * FROM waypoints
+WHERE type = sqlc.arg(type);
+
 -- name: GetWaypointsForSystem :many
 SELECT * FROM waypoints
 WHERE system = sqlc.arg(system_name);

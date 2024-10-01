@@ -28,8 +28,9 @@ type Server struct {
 	queries *query.Queries
 	// TODO: check if api or query can be removed
 
-	systemCache cache.SystemCache
-	fleetCache  *cache.FleetCache
+	systemCache   cache.SystemCache
+	jumpgateCache cache.JumpgateCache
+	fleetCache    *cache.FleetCache
 }
 
 // New creates and returns a new Client instance.
@@ -53,8 +54,9 @@ func New(baseURL string, token string, dbFile string) (*Server, error) {
 		db:      db,
 		queries: q,
 
-		systemCache: cache.NewSystemCache(client, db, q),
-		fleetCache:  cache.NewFleetCache(client),
+		systemCache:   cache.NewSystemCache(client, db, q),
+		jumpgateCache: cache.NewJumpgateCache(client, db, q),
+		fleetCache:    cache.NewFleetCache(client),
 	}, nil
 }
 
@@ -119,16 +121,19 @@ func (s *Server) CreateCaches(ctxParent context.Context) error {
 	ctx, cancel := context.WithTimeout(ctxParent, indexTimeout)
 	defer cancel()
 
-	err := worker.AddAndWait(ctx, "create-system-cache", func(ctx context.Context, progressChan chan<- float64) error {
+	if err := worker.AddAndWait(ctx, "create-system-cache", func(ctx context.Context, progressChan chan<- float64) error {
 		return s.systemCache.Create(ctx, progressChan)
-	})
-	if err != nil {
+	}, worker.WithMaxLogFrequency(5*time.Second)); err != nil {
 		return err
 	}
-	err = worker.AddAndWait(ctx, "create-fleet-cache", func(ctx context.Context, progressChan chan<- float64) error {
+	if err := worker.AddAndWait(ctx, "create-jumpgate-cache", func(ctx context.Context, progressChan chan<- float64) error {
+		return s.jumpgateCache.Create(ctx, progressChan)
+	}, worker.WithMaxLogFrequency(5*time.Second)); err != nil {
+		return err
+	}
+	if err := worker.AddAndWait(ctx, "create-fleet-cache", func(ctx context.Context, progressChan chan<- float64) error {
 		return s.fleetCache.Create(ctx, progressChan)
-	})
-	if err != nil {
+	}); err != nil {
 		return err
 	}
 
