@@ -15,6 +15,7 @@ require (
 	github.com/stretchr/testify v1.9.0
 	github.com/vektah/gqlparser/v2 v2.5.16
 	github.com/vikstrous/dataloadgen v0.0.6
+	github.com/vitorsalgado/mocha/v3 v3.0.2
 	go-simpler.org/env v0.12.0
 	go.uber.org/ratelimit v0.3.1
 	modernc.org/sqlite v1.33.1
@@ -39,6 +40,7 @@ require (
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/sosodev/duration v1.3.1 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
+	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/volatiletech/inflect v0.0.1 // indirect
 	github.com/volatiletech/sqlboiler/v4 v4.2.0 // indirect
 	github.com/volatiletech/strmangle v0.0.1 // indirect

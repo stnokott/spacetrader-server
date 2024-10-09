@@ -31,14 +31,13 @@ func (d *Date) String() string {
 }
 
 // Status represents the status of the game server. This also includes a few global elements, such as announcements, server reset dates and leaderboards.
+//
+// Note: this struct is defined manually since oapi-codegen doesn't generate it.
 type Status struct {
-	Status    string `json:"status"`
-	Version   string `json:"version"`
-	LastReset Date   `json:"resetDate"`
-	Resets    struct {
-		Next      time.Time `json:"next"`
-		Frequency string    `json:"frequency"`
-	} `json:"serverResets"`
+	Status     string       `json:"status"`
+	Version    string       `json:"version"`
+	LastReset  Date         `json:"resetDate"`
+	Resets     ServerResets `json:"serverResets"`
 	Statistics struct {
 		Agents    int64 `json:"agents"`
 		Ships     int64 `json:"ships"`
@@ -49,6 +48,12 @@ type Status struct {
 		Title string `json:"title"`
 		Body  string `json:"body"`
 	} `json:"announcements"`
+}
+
+// ServerResets represents the server's reset frequency and the next planned reset.
+type ServerResets struct {
+	Next      time.Time `json:"next"`
+	Frequency string    `json:"frequency"`
 }
 
 // String implements the Stringer interface.

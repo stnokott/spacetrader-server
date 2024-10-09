@@ -3,11 +3,10 @@ package mocks
 import (
 	"github.com/jinzhu/copier"
 	"github.com/stnokott/spacetrader-server/internal/api"
-	"github.com/stnokott/spacetrader-server/internal/graph/model"
 )
 
-func newDefaultShip() *model.Ship {
-	ship := new(model.Ship)
+func newDefaultShip() *api.Ship {
+	ship := new(api.Ship)
 	if err := copier.CopyWithOption(ship, defaultShip, copier.Option{DeepCopy: true}); err != nil {
 		// only called during testing, so panicking is ok
 		panic(err)
@@ -15,22 +14,23 @@ func newDefaultShip() *model.Ship {
 	return ship
 }
 
-func NewShipInSystem(name string, sys *model.System) *model.Ship {
+func NewShipInSystem(name string, sys *api.System) *api.Ship {
 	ship := newDefaultShip()
-	ship.Name = name
-	ship.System = sys
-	ship.SystemID = sys.Name
+	ship.Symbol = name
+	ship.Nav.SystemSymbol = sys.Symbol
 	wp := sys.Waypoints[0]
-	ship.Waypoint = wp
-	ship.WaypointID = wp.Name
+	ship.Nav.WaypointSymbol = wp.Symbol
 	return ship
 }
 
-var defaultShip = &model.Ship{
-	Name:       "STNOKOTT-1",
-	Role:       api.ShipRoleCOMMAND,
-	System:     nil, // should be filled when copying
-	Waypoint:   nil, // should be filled when copying
-	SystemID:   "",  // should be filled when copying
-	WaypointID: "",  // should be filled when copying
+var defaultShip = &api.Ship{
+	Symbol: "STNOKOTT-1",
+	Registration: api.ShipRegistration{
+		Role: api.ShipRoleCOMMAND,
+	},
+	Nav: api.ShipNav{
+		SystemSymbol:   "", // should be filled when copying
+		WaypointSymbol: "", // should be filled when copying
+		Status:         api.DOCKED,
+	},
 }

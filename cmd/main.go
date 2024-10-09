@@ -10,9 +10,11 @@ import (
 	"github.com/stnokott/spacetrader-server/internal/config"
 )
 
-const (
-	baseURL = "https://api.spacetraders.io/v2/"
-)
+// define program hooks, mainly used for injecting mocked logic into the main lifecycle
+var beforeHooks []func() error
+var afterHooks []func() error
+
+var baseURL = "!UNDEFINED"
 
 func main() {
 	var err error
@@ -20,6 +22,22 @@ func main() {
 		fmt.Println(err)
 		if err != nil {
 			os.Exit(1)
+		}
+	}()
+
+	// run hooks
+	for _, h := range beforeHooks {
+		if err = h(); err != nil {
+			return
+		}
+	}
+	defer func() {
+		for _, h := range afterHooks {
+			if errInner := h(); errInner != nil {
+				fmt.Printf("WARNING: error running hook: %v\n", errInner)
+				// we always want to run all after hooks regardless of error so any running background
+				// services are always properly closed. This is why we continue on non-nil error here.
+			}
 		}
 	}()
 
