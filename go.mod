@@ -13,7 +13,7 @@ require (
 	github.com/nrfta/go-paging v0.2.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.9.0
-	github.com/vektah/gqlparser/v2 v2.5.16
+	github.com/vektah/gqlparser/v2 v2.5.18
 	github.com/vikstrous/dataloadgen v0.0.6
 	go-simpler.org/env v0.12.0
 	go.uber.org/ratelimit v0.3.1
