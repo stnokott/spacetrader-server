@@ -8,6 +8,7 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"io"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -15,7 +16,6 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/introspection"
-	"github.com/nrfta/go-paging"
 	"github.com/stnokott/spacetrader-server/internal/api"
 	"github.com/stnokott/spacetrader-server/internal/graph/model"
 	gqlparser "github.com/vektah/gqlparser/v2"
@@ -42,9 +42,9 @@ type Config struct {
 }
 
 type ResolverRoot interface {
-	PageInfo() PageInfoResolver
 	Query() QueryResolver
 	Ship() ShipResolver
+	Subscription() SubscriptionResolver
 	System() SystemResolver
 	Waypoint() WaypointResolver
 }
@@ -55,27 +55,21 @@ type DirectiveRoot struct {
 type ComplexityRoot struct {
 }
 
-type PageInfoResolver interface {
-	HasPreviousPage(ctx context.Context, obj *paging.PageInfo) (bool, error)
-	HasNextPage(ctx context.Context, obj *paging.PageInfo) (bool, error)
-	TotalCount(ctx context.Context, obj *paging.PageInfo) (*int, error)
-	StartCursor(ctx context.Context, obj *paging.PageInfo) (*string, error)
-	EndCursor(ctx context.Context, obj *paging.PageInfo) (*string, error)
-}
 type QueryResolver interface {
 	Server(ctx context.Context) (*model.Server, error)
 	Agent(ctx context.Context) (*model.Agent, error)
 	Ships(ctx context.Context) ([]*model.Ship, error)
-	Systems(ctx context.Context, page *paging.PageArgs) (*model.SystemConnection, error)
-	System(ctx context.Context, id string) (*model.System, error)
+	SystemCount(ctx context.Context) (int64, error)
 }
 type ShipResolver interface {
 	System(ctx context.Context, obj *model.Ship) (*model.System, error)
 	Waypoint(ctx context.Context, obj *model.Ship) (*model.Waypoint, error)
 }
+type SubscriptionResolver interface {
+	System(ctx context.Context) (<-chan *model.System, error)
+}
 type SystemResolver interface {
 	Waypoints(ctx context.Context, obj *model.System) ([]*model.Waypoint, error)
-	HasJumpgates(ctx context.Context, obj *model.System) (bool, error)
 }
 type WaypointResolver interface {
 	System(ctx context.Context, obj *model.Waypoint) (*model.System, error)
@@ -107,9 +101,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	rc := graphql.GetOperationContext(ctx)
 	ec := executionContext{rc, e, 0, 0, make(chan graphql.DeferredResult)}
-	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
-		ec.unmarshalInputPageArgs,
-	)
+	inputUnmarshalMap := graphql.BuildUnmarshalerMap()
 	first := true
 
 	switch rc.Operation.Operation {
@@ -142,6 +134,23 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 			}
 
 			return &response
+		}
+	case ast.Subscription:
+		next := ec._Subscription(ctx, rc.Operation.SelectionSet)
+
+		var buf bytes.Buffer
+		return func(ctx context.Context) *graphql.Response {
+			buf.Reset()
+			data := next(ctx)
+
+			if data == nil {
+				return nil
+			}
+			data.MarshalGQL(&buf)
+
+			return &graphql.Response{
+				Data: buf.Bytes(),
+			}
 		}
 
 	default:
@@ -190,7 +199,7 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 	return introspection.WrapTypeFromDef(ec.Schema(), ec.Schema().Types[name]), nil
 }
 
-//go:embed "schema/agent.graphqls" "schema/galaxy.graphqls" "schema/pagination.graphqls" "schema/query.graphqls" "schema/server.graphqls" "schema/ship.graphqls" "schema/system.graphqls" "schema/waypoint.graphqls"
+//go:embed "schema/agent.graphqls" "schema/galaxy.graphqls" "schema/query.graphqls" "schema/server.graphqls" "schema/ship.graphqls" "schema/subscription.graphqls" "schema/system.graphqls" "schema/waypoint.graphqls"
 var sourcesFS embed.FS
 
 func sourceData(filename string) string {
@@ -204,10 +213,10 @@ func sourceData(filename string) string {
 var sources = []*ast.Source{
 	{Name: "schema/agent.graphqls", Input: sourceData("schema/agent.graphqls"), BuiltIn: false},
 	{Name: "schema/galaxy.graphqls", Input: sourceData("schema/galaxy.graphqls"), BuiltIn: false},
-	{Name: "schema/pagination.graphqls", Input: sourceData("schema/pagination.graphqls"), BuiltIn: false},
 	{Name: "schema/query.graphqls", Input: sourceData("schema/query.graphqls"), BuiltIn: false},
 	{Name: "schema/server.graphqls", Input: sourceData("schema/server.graphqls"), BuiltIn: false},
 	{Name: "schema/ship.graphqls", Input: sourceData("schema/ship.graphqls"), BuiltIn: false},
+	{Name: "schema/subscription.graphqls", Input: sourceData("schema/subscription.graphqls"), BuiltIn: false},
 	{Name: "schema/system.graphqls", Input: sourceData("schema/system.graphqls"), BuiltIn: false},
 	{Name: "schema/waypoint.graphqls", Input: sourceData("schema/waypoint.graphqls"), BuiltIn: false},
 }
@@ -246,70 +255,6 @@ func (ec *executionContext) field_Query___type_argsName(
 	}
 
 	var zeroVal string
-	return zeroVal, nil
-}
-
-func (ec *executionContext) field_Query_system_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	arg0, err := ec.field_Query_system_argsID(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["id"] = arg0
-	return args, nil
-}
-func (ec *executionContext) field_Query_system_argsID(
-	ctx context.Context,
-	rawArgs map[string]interface{},
-) (string, error) {
-	// We won't call the directive if the argument is null.
-	// Set call_argument_directives_with_null to true to call directives
-	// even if the argument is null.
-	_, ok := rawArgs["id"]
-	if !ok {
-		var zeroVal string
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-	if tmp, ok := rawArgs["id"]; ok {
-		return ec.unmarshalNString2string(ctx, tmp)
-	}
-
-	var zeroVal string
-	return zeroVal, nil
-}
-
-func (ec *executionContext) field_Query_systems_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	arg0, err := ec.field_Query_systems_argsPage(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["page"] = arg0
-	return args, nil
-}
-func (ec *executionContext) field_Query_systems_argsPage(
-	ctx context.Context,
-	rawArgs map[string]interface{},
-) (*paging.PageArgs, error) {
-	// We won't call the directive if the argument is null.
-	// Set call_argument_directives_with_null to true to call directives
-	// even if the argument is null.
-	_, ok := rawArgs["page"]
-	if !ok {
-		var zeroVal *paging.PageArgs
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("page"))
-	if tmp, ok := rawArgs["page"]; ok {
-		return ec.unmarshalOPageArgs2ᚖgithubᚗcomᚋnrftaᚋgoᚑpagingᚐPageArgs(ctx, tmp)
-	}
-
-	var zeroVal *paging.PageArgs
 	return zeroVal, nil
 }
 
@@ -517,217 +462,6 @@ func (ec *executionContext) fieldContext_Agent_hq(_ context.Context, field graph
 	return fc, nil
 }
 
-func (ec *executionContext) _PageInfo_hasPreviousPage(ctx context.Context, field graphql.CollectedField, obj *paging.PageInfo) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_PageInfo_hasPreviousPage(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.PageInfo().HasPreviousPage(rctx, obj)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(bool)
-	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_PageInfo_hasPreviousPage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "PageInfo",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _PageInfo_hasNextPage(ctx context.Context, field graphql.CollectedField, obj *paging.PageInfo) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_PageInfo_hasNextPage(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.PageInfo().HasNextPage(rctx, obj)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(bool)
-	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_PageInfo_hasNextPage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "PageInfo",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _PageInfo_totalCount(ctx context.Context, field graphql.CollectedField, obj *paging.PageInfo) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_PageInfo_totalCount(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.PageInfo().TotalCount(rctx, obj)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*int)
-	fc.Result = res
-	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_PageInfo_totalCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "PageInfo",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _PageInfo_startCursor(ctx context.Context, field graphql.CollectedField, obj *paging.PageInfo) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_PageInfo_startCursor(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.PageInfo().StartCursor(rctx, obj)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_PageInfo_startCursor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "PageInfo",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _PageInfo_endCursor(ctx context.Context, field graphql.CollectedField, obj *paging.PageInfo) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_PageInfo_endCursor(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.PageInfo().EndCursor(rctx, obj)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_PageInfo_endCursor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "PageInfo",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Query_server(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_server(ctx, field)
 	if err != nil {
@@ -892,8 +626,8 @@ func (ec *executionContext) fieldContext_Query_ships(_ context.Context, field gr
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_systems(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_systems(ctx, field)
+func (ec *executionContext) _Query_systemCount(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_systemCount(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -906,7 +640,7 @@ func (ec *executionContext) _Query_systems(ctx context.Context, field graphql.Co
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Systems(rctx, fc.Args["page"].(*paging.PageArgs))
+		return ec.resolvers.Query().SystemCount(rctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -918,108 +652,20 @@ func (ec *executionContext) _Query_systems(ctx context.Context, field graphql.Co
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*model.SystemConnection)
+	res := resTmp.(int64)
 	fc.Result = res
-	return ec.marshalNSystemConnection2ᚖgithubᚗcomᚋstnokottᚋspacetraderᚑserverᚋinternalᚋgraphᚋmodelᚐSystemConnection(ctx, field.Selections, res)
+	return ec.marshalNInt642int64(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Query_systems(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_systemCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
 		IsMethod:   true,
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "edges":
-				return ec.fieldContext_SystemConnection_edges(ctx, field)
-			case "pageInfo":
-				return ec.fieldContext_SystemConnection_pageInfo(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type SystemConnection", field.Name)
+			return nil, errors.New("field of type Int64 does not have child fields")
 		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_systems_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Query_system(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_system(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().System(rctx, fc.Args["id"].(string))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*model.System)
-	fc.Result = res
-	return ec.marshalNSystem2ᚖgithubᚗcomᚋstnokottᚋspacetraderᚑserverᚋinternalᚋgraphᚋmodelᚐSystem(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Query_system(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "name":
-				return ec.fieldContext_System_name(ctx, field)
-			case "type":
-				return ec.fieldContext_System_type(ctx, field)
-			case "x":
-				return ec.fieldContext_System_x(ctx, field)
-			case "y":
-				return ec.fieldContext_System_y(ctx, field)
-			case "waypoints":
-				return ec.fieldContext_System_waypoints(ctx, field)
-			case "hasJumpgates":
-				return ec.fieldContext_System_hasJumpgates(ctx, field)
-			case "factions":
-				return ec.fieldContext_System_factions(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type System", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_system_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
 	}
 	return fc, nil
 }
@@ -1834,8 +1480,6 @@ func (ec *executionContext) fieldContext_Ship_system(_ context.Context, field gr
 				return ec.fieldContext_System_y(ctx, field)
 			case "waypoints":
 				return ec.fieldContext_System_waypoints(ctx, field)
-			case "hasJumpgates":
-				return ec.fieldContext_System_hasJumpgates(ctx, field)
 			case "factions":
 				return ec.fieldContext_System_factions(ctx, field)
 			}
@@ -1898,6 +1542,78 @@ func (ec *executionContext) fieldContext_Ship_waypoint(_ context.Context, field 
 				return ec.fieldContext_Waypoint_connectedTo(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Waypoint", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Subscription_system(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	fc, err := ec.fieldContext_Subscription_system(ctx, field)
+	if err != nil {
+		return nil
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = nil
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Subscription().System(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return nil
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return nil
+	}
+	return func(ctx context.Context) graphql.Marshaler {
+		select {
+		case res, ok := <-resTmp.(<-chan *model.System):
+			if !ok {
+				return nil
+			}
+			return graphql.WriterFunc(func(w io.Writer) {
+				w.Write([]byte{'{'})
+				graphql.MarshalString(field.Alias).MarshalGQL(w)
+				w.Write([]byte{':'})
+				ec.marshalNSystem2ᚖgithubᚗcomᚋstnokottᚋspacetraderᚑserverᚋinternalᚋgraphᚋmodelᚐSystem(ctx, field.Selections, res).MarshalGQL(w)
+				w.Write([]byte{'}'})
+			})
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
+func (ec *executionContext) fieldContext_Subscription_system(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_System_name(ctx, field)
+			case "type":
+				return ec.fieldContext_System_type(ctx, field)
+			case "x":
+				return ec.fieldContext_System_x(ctx, field)
+			case "y":
+				return ec.fieldContext_System_y(ctx, field)
+			case "waypoints":
+				return ec.fieldContext_System_waypoints(ctx, field)
+			case "factions":
+				return ec.fieldContext_System_factions(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type System", field.Name)
 		},
 	}
 	return fc, nil
@@ -2137,50 +1853,6 @@ func (ec *executionContext) fieldContext_System_waypoints(_ context.Context, fie
 	return fc, nil
 }
 
-func (ec *executionContext) _System_hasJumpgates(ctx context.Context, field graphql.CollectedField, obj *model.System) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_System_hasJumpgates(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.System().HasJumpgates(rctx, obj)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(bool)
-	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_System_hasJumpgates(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "System",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _System_factions(ctx context.Context, field graphql.CollectedField, obj *model.System) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_System_factions(ctx, field)
 	if err != nil {
@@ -2220,213 +1892,6 @@ func (ec *executionContext) fieldContext_System_factions(_ context.Context, fiel
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Faction does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _SystemConnection_edges(ctx context.Context, field graphql.CollectedField, obj *model.SystemConnection) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_SystemConnection_edges(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Edges, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]*model.SystemEdge)
-	fc.Result = res
-	return ec.marshalNSystemEdge2ᚕᚖgithubᚗcomᚋstnokottᚋspacetraderᚑserverᚋinternalᚋgraphᚋmodelᚐSystemEdgeᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_SystemConnection_edges(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "SystemConnection",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "cursor":
-				return ec.fieldContext_SystemEdge_cursor(ctx, field)
-			case "node":
-				return ec.fieldContext_SystemEdge_node(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type SystemEdge", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _SystemConnection_pageInfo(ctx context.Context, field graphql.CollectedField, obj *model.SystemConnection) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_SystemConnection_pageInfo(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.PageInfo, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*paging.PageInfo)
-	fc.Result = res
-	return ec.marshalNPageInfo2ᚖgithubᚗcomᚋnrftaᚋgoᚑpagingᚐPageInfo(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_SystemConnection_pageInfo(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "SystemConnection",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "hasPreviousPage":
-				return ec.fieldContext_PageInfo_hasPreviousPage(ctx, field)
-			case "hasNextPage":
-				return ec.fieldContext_PageInfo_hasNextPage(ctx, field)
-			case "totalCount":
-				return ec.fieldContext_PageInfo_totalCount(ctx, field)
-			case "startCursor":
-				return ec.fieldContext_PageInfo_startCursor(ctx, field)
-			case "endCursor":
-				return ec.fieldContext_PageInfo_endCursor(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type PageInfo", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _SystemEdge_cursor(ctx context.Context, field graphql.CollectedField, obj *model.SystemEdge) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_SystemEdge_cursor(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Cursor, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_SystemEdge_cursor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "SystemEdge",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _SystemEdge_node(ctx context.Context, field graphql.CollectedField, obj *model.SystemEdge) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_SystemEdge_node(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Node, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*model.System)
-	fc.Result = res
-	return ec.marshalNSystem2ᚖgithubᚗcomᚋstnokottᚋspacetraderᚑserverᚋinternalᚋgraphᚋmodelᚐSystem(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_SystemEdge_node(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "SystemEdge",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "name":
-				return ec.fieldContext_System_name(ctx, field)
-			case "type":
-				return ec.fieldContext_System_type(ctx, field)
-			case "x":
-				return ec.fieldContext_System_x(ctx, field)
-			case "y":
-				return ec.fieldContext_System_y(ctx, field)
-			case "waypoints":
-				return ec.fieldContext_System_waypoints(ctx, field)
-			case "hasJumpgates":
-				return ec.fieldContext_System_hasJumpgates(ctx, field)
-			case "factions":
-				return ec.fieldContext_System_factions(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type System", field.Name)
 		},
 	}
 	return fc, nil
@@ -2525,8 +1990,6 @@ func (ec *executionContext) fieldContext_Waypoint_system(_ context.Context, fiel
 				return ec.fieldContext_System_y(ctx, field)
 			case "waypoints":
 				return ec.fieldContext_System_waypoints(ctx, field)
-			case "hasJumpgates":
-				return ec.fieldContext_System_hasJumpgates(ctx, field)
 			case "factions":
 				return ec.fieldContext_System_factions(ctx, field)
 			}
@@ -4496,40 +3959,6 @@ func (ec *executionContext) fieldContext___Type_specifiedByURL(_ context.Context
 
 // region    **************************** input.gotpl *****************************
 
-func (ec *executionContext) unmarshalInputPageArgs(ctx context.Context, obj interface{}) (paging.PageArgs, error) {
-	var it paging.PageArgs
-	asMap := map[string]interface{}{}
-	for k, v := range obj.(map[string]interface{}) {
-		asMap[k] = v
-	}
-
-	fieldsInOrder := [...]string{"first", "after"}
-	for _, k := range fieldsInOrder {
-		v, ok := asMap[k]
-		if !ok {
-			continue
-		}
-		switch k {
-		case "first":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("first"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.First = data
-		case "after":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("after"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.After = data
-		}
-	}
-
-	return it, nil
-}
-
 // endregion **************************** input.gotpl *****************************
 
 // region    ************************** interface.gotpl ***************************
@@ -4564,211 +3993,6 @@ func (ec *executionContext) _Agent(ctx context.Context, sel ast.SelectionSet, ob
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var pageInfoImplementors = []string{"PageInfo"}
-
-func (ec *executionContext) _PageInfo(ctx context.Context, sel ast.SelectionSet, obj *paging.PageInfo) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, pageInfoImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("PageInfo")
-		case "hasPreviousPage":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._PageInfo_hasPreviousPage(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "hasNextPage":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._PageInfo_hasNextPage(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "totalCount":
-			field := field
-
-			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._PageInfo_totalCount(ctx, field, obj)
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "startCursor":
-			field := field
-
-			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._PageInfo_startCursor(ctx, field, obj)
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "endCursor":
-			field := field
-
-			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._PageInfo_endCursor(ctx, field, obj)
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -4877,7 +4101,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "systems":
+		case "systemCount":
 			field := field
 
 			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
@@ -4886,29 +4110,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_systems(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			rrm := func(ctx context.Context) graphql.Marshaler {
-				return ec.OperationContext.RootResolverMiddleware(ctx,
-					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "system":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_system(ctx, field)
+				res = ec._Query_systemCount(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -5230,6 +4432,26 @@ func (ec *executionContext) _Ship(ctx context.Context, sel ast.SelectionSet, obj
 	return out
 }
 
+var subscriptionImplementors = []string{"Subscription"}
+
+func (ec *executionContext) _Subscription(ctx context.Context, sel ast.SelectionSet) func(ctx context.Context) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, subscriptionImplementors)
+	ctx = graphql.WithFieldContext(ctx, &graphql.FieldContext{
+		Object: "Subscription",
+	})
+	if len(fields) != 1 {
+		ec.Errorf(ctx, "must subscribe to exactly one stream")
+		return nil
+	}
+
+	switch fields[0].Name {
+	case "system":
+		return ec._Subscription_system(ctx, fields[0])
+	default:
+		panic("unknown field " + strconv.Quote(fields[0].Name))
+	}
+}
+
 var systemImplementors = []string{"System"}
 
 func (ec *executionContext) _System(ctx context.Context, sel ast.SelectionSet, obj *model.System) graphql.Marshaler {
@@ -5297,131 +4519,10 @@ func (ec *executionContext) _System(ctx context.Context, sel ast.SelectionSet, o
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "hasJumpgates":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._System_hasJumpgates(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "factions":
 			out.Values[i] = ec._System_factions(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var systemConnectionImplementors = []string{"SystemConnection"}
-
-func (ec *executionContext) _SystemConnection(ctx context.Context, sel ast.SelectionSet, obj *model.SystemConnection) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, systemConnectionImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("SystemConnection")
-		case "edges":
-			out.Values[i] = ec._SystemConnection_edges(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "pageInfo":
-			out.Values[i] = ec._SystemConnection_pageInfo(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var systemEdgeImplementors = []string{"SystemEdge"}
-
-func (ec *executionContext) _SystemEdge(ctx context.Context, sel ast.SelectionSet, obj *model.SystemEdge) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, systemEdgeImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("SystemEdge")
-		case "cursor":
-			out.Values[i] = ec._SystemEdge_cursor(ctx, field, obj)
-		case "node":
-			out.Values[i] = ec._SystemEdge_node(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
 			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
@@ -6121,16 +5222,6 @@ func (ec *executionContext) marshalNInt642int64(ctx context.Context, sel ast.Sel
 	return res
 }
 
-func (ec *executionContext) marshalNPageInfo2ᚖgithubᚗcomᚋnrftaᚋgoᚑpagingᚐPageInfo(ctx context.Context, sel ast.SelectionSet, v *paging.PageInfo) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._PageInfo(ctx, sel, v)
-}
-
 func (ec *executionContext) marshalNServer2githubᚗcomᚋstnokottᚋspacetraderᚑserverᚋinternalᚋgraphᚋmodelᚐServer(ctx context.Context, sel ast.SelectionSet, v model.Server) graphql.Marshaler {
 	return ec._Server(ctx, sel, &v)
 }
@@ -6370,74 +5461,6 @@ func (ec *executionContext) marshalNSystem2ᚖgithubᚗcomᚋstnokottᚋspacetra
 		return graphql.Null
 	}
 	return ec._System(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalNSystemConnection2githubᚗcomᚋstnokottᚋspacetraderᚑserverᚋinternalᚋgraphᚋmodelᚐSystemConnection(ctx context.Context, sel ast.SelectionSet, v model.SystemConnection) graphql.Marshaler {
-	return ec._SystemConnection(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNSystemConnection2ᚖgithubᚗcomᚋstnokottᚋspacetraderᚑserverᚋinternalᚋgraphᚋmodelᚐSystemConnection(ctx context.Context, sel ast.SelectionSet, v *model.SystemConnection) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._SystemConnection(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalNSystemEdge2ᚕᚖgithubᚗcomᚋstnokottᚋspacetraderᚑserverᚋinternalᚋgraphᚋmodelᚐSystemEdgeᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.SystemEdge) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNSystemEdge2ᚖgithubᚗcomᚋstnokottᚋspacetraderᚑserverᚋinternalᚋgraphᚋmodelᚐSystemEdge(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
-func (ec *executionContext) marshalNSystemEdge2ᚖgithubᚗcomᚋstnokottᚋspacetraderᚑserverᚋinternalᚋgraphᚋmodelᚐSystemEdge(ctx context.Context, sel ast.SelectionSet, v *model.SystemEdge) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._SystemEdge(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNSystemType2githubᚗcomᚋstnokottᚋspacetraderᚑserverᚋinternalᚋapiᚐSystemType(ctx context.Context, v interface{}) (api.SystemType, error) {
@@ -6884,30 +5907,6 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	}
 	res := graphql.MarshalBoolean(*v)
 	return res
-}
-
-func (ec *executionContext) unmarshalOInt2ᚖint(ctx context.Context, v interface{}) (*int, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := graphql.UnmarshalInt(v)
-	return &res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.SelectionSet, v *int) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	res := graphql.MarshalInt(*v)
-	return res
-}
-
-func (ec *executionContext) unmarshalOPageArgs2ᚖgithubᚗcomᚋnrftaᚋgoᚑpagingᚐPageArgs(ctx context.Context, v interface{}) (*paging.PageArgs, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := ec.unmarshalInputPageArgs(ctx, v)
-	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalOString2ᚕstringᚄ(ctx context.Context, v interface{}) ([]string, error) {

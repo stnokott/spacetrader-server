@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/99designs/gqlgen/graphql/handler"
+	"github.com/99designs/gqlgen/graphql/handler/transport"
+	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/stnokott/spacetrader-server/internal/api"
 	"github.com/stnokott/spacetrader-server/internal/cache"
 	"github.com/stnokott/spacetrader-server/internal/graph"
@@ -72,6 +74,7 @@ func (s *Server) Listen(ctx context.Context, port int, path string) error {
 	srv := handler.NewDefaultServer(graph.NewExecutableSchema(graph.Config{Resolvers: graph.NewResolver(
 		s.api, s.queries, s.fleetCache,
 	)}))
+	srv.AddTransport(&transport.Websocket{})
 
 	var srvHandler http.Handler = srv
 	// wrap dataloader middleware for injecting dataloaders into request contexts
@@ -79,6 +82,7 @@ func (s *Server) Listen(ctx context.Context, port int, path string) error {
 
 	mux := http.NewServeMux()
 	mux.Handle(path, srvHandler)
+	mux.Handle("/playground", playground.Handler("Playground", path))
 
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", port),

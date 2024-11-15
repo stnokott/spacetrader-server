@@ -21,15 +21,6 @@ func (r *systemResolver) Waypoints(ctx context.Context, obj *model.System) ([]*m
 	return convert.ConvertWaypoints(waypoints), nil
 }
 
-// HasJumpgates is the resolver for the hasJumpgates field.
-func (r *systemResolver) HasJumpgates(ctx context.Context, obj *model.System) (bool, error) {
-	b, err := r.db.SystemHasJumpgates(ctx, obj.Name)
-	if err != nil {
-		return false, fmt.Errorf("querying jumpgate boolean for system %s: %w", obj.Name, err)
-	}
-	return b, nil
-}
-
 // System returns SystemResolver implementation.
 func (r *Resolver) System() SystemResolver { return &systemResolver{r} }
 

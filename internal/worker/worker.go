@@ -29,7 +29,7 @@ func Add(ctx context.Context, name string, job Job) <-chan error {
 		var err error
 		defer func() {
 			if err != nil {
-				logger.Warnf("job <%s> finished with err %v", name, err)
+				logger.Warnf("job <%s> finished with err: %v", name, err)
 			} else {
 				logger.Infof("job <%s> finished", name)
 			}

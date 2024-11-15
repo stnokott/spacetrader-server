@@ -7,12 +7,10 @@ package graph
 import (
 	"context"
 	"errors"
+	"fmt"
 
-	"github.com/nrfta/go-paging"
 	"github.com/stnokott/spacetrader-server/internal/api"
 	"github.com/stnokott/spacetrader-server/internal/convert"
-	"github.com/stnokott/spacetrader-server/internal/db/query"
-	"github.com/stnokott/spacetrader-server/internal/graph/loaders"
 	"github.com/stnokott/spacetrader-server/internal/graph/model"
 )
 
@@ -48,48 +46,13 @@ func (r *queryResolver) Ships(ctx context.Context) ([]*model.Ship, error) {
 	return r.fleetCache.Ships, nil
 }
 
-// Systems is the resolver for the systems field.
-func (r *queryResolver) Systems(ctx context.Context, page *paging.PageArgs) (out *model.SystemConnection, err error) {
-	defer func() {
-		if err != nil {
-			out = &model.SystemConnection{
-				PageInfo: paging.NewEmptyPageInfo(),
-			}
-		}
-	}()
-
-	var total int64
-	if total, err = r.db.GetSystemCount(ctx); err != nil {
-		return
+// SystemCount is the resolver for the systemCount field.
+func (r *queryResolver) SystemCount(ctx context.Context) (int64, error) {
+	total, err := r.db.GetSystemCount(ctx)
+	if err != nil {
+		return -1, fmt.Errorf("getting total system count: %w", err)
 	}
-
-	paginator := paging.NewOffsetPaginator(page, total)
-
-	var rows []query.System
-	if rows, err = r.db.GetSystemsOffset(ctx, query.GetSystemsOffsetParams{
-		Offset: int64(paginator.Offset),
-		Limit:  int64(paginator.Limit),
-	}); err != nil {
-		return
-	}
-
-	edges := make([]*model.SystemEdge, len(rows))
-	for i, row := range rows {
-		edges[i] = &model.SystemEdge{
-			Cursor: paging.EncodeOffsetCursor(paginator.Offset + i + 1),
-			Node:   convert.ConvertSystem(row),
-		}
-	}
-	out = &model.SystemConnection{
-		PageInfo: &paginator.PageInfo,
-		Edges:    edges,
-	}
-	return
-}
-
-// System is the resolver for the system field.
-func (r *queryResolver) System(ctx context.Context, id string) (*model.System, error) {
-	return loaders.GetSystem(ctx, id)
+	return total, nil
 }
 
 // Query returns QueryResolver implementation.

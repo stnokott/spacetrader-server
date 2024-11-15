@@ -5,7 +5,6 @@ package model
 import (
 	"time"
 
-	"github.com/nrfta/go-paging"
 	"github.com/stnokott/spacetrader-server/internal/api"
 )
 
@@ -50,24 +49,16 @@ type Ship struct {
 	WaypointID string `json:"-"`
 }
 
+type Subscription struct {
+}
+
 type System struct {
-	Name         string              `json:"name"`
-	Type         api.SystemType      `json:"type"`
-	X            int                 `json:"x"`
-	Y            int                 `json:"y"`
-	Waypoints    []*Waypoint         `json:"waypoints"`
-	HasJumpgates bool                `json:"hasJumpgates"`
-	Factions     []api.FactionSymbol `json:"factions"`
-}
-
-type SystemConnection struct {
-	Edges    []*SystemEdge    `json:"edges"`
-	PageInfo *paging.PageInfo `json:"pageInfo"`
-}
-
-type SystemEdge struct {
-	Cursor *string `json:"cursor,omitempty"`
-	Node   *System `json:"node"`
+	Name      string              `json:"name"`
+	Type      api.SystemType      `json:"type"`
+	X         int                 `json:"x"`
+	Y         int                 `json:"y"`
+	Waypoints []*Waypoint         `json:"waypoints"`
+	Factions  []api.FactionSymbol `json:"factions"`
 }
 
 type Waypoint struct {
