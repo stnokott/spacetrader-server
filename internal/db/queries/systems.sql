@@ -27,4 +27,5 @@ LIMIT sqlc.arg(limit) OFFSET sqlc.arg(offset)
 
 -- name: GetSystemsByName :many
 SELECT * FROM systems
-WHERE symbol IN (sqlc.slice(system_ids));
+WHERE symbol IN (sqlc.slice(system_ids))
+;

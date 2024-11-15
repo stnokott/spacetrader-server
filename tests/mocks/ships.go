@@ -20,17 +20,12 @@ func NewShipInSystem(name string, sys *model.System) *model.Ship {
 	ship.Name = name
 	ship.System = sys
 	ship.SystemID = sys.Name
-	wp := sys.Waypoints[0]
-	ship.Waypoint = wp
-	ship.WaypointID = wp.Name
 	return ship
 }
 
 var defaultShip = &model.Ship{
-	Name:       "STNOKOTT-1",
-	Role:       api.ShipRoleCOMMAND,
-	System:     nil, // should be filled when copying
-	Waypoint:   nil, // should be filled when copying
-	SystemID:   "",  // should be filled when copying
-	WaypointID: "",  // should be filled when copying
+	Name:     "STNOKOTT-1",
+	Role:     api.ShipRoleCOMMAND,
+	System:   nil, // should be filled when copying
+	SystemID: "",  // should be filled when copying
 }

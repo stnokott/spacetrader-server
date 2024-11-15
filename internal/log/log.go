@@ -49,13 +49,13 @@ var _ logrus.Formatter = (*componentFormatter)(nil)
 var defaultFormatter = &componentFormatter{}
 
 var levelStrings = map[logrus.Level]string{
-	logrus.PanicLevel: "PANI",
-	logrus.FatalLevel: "FATA",
-	logrus.ErrorLevel: "ERRO",
-	logrus.WarnLevel:  "WARN",
-	logrus.InfoLevel:  "INFO",
-	logrus.DebugLevel: "DEBU",
-	logrus.TraceLevel: "TRAC",
+	logrus.PanicLevel: "PAN",
+	logrus.FatalLevel: "FTL",
+	logrus.ErrorLevel: "ERR",
+	logrus.WarnLevel:  "WRN",
+	logrus.InfoLevel:  "INF",
+	logrus.DebugLevel: "DBG",
+	logrus.TraceLevel: "TRC",
 }
 var levelColors = map[logrus.Level]aurora.Color{
 	logrus.PanicLevel: aurora.RedBg | aurora.WhiteFg,

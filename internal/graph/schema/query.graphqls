@@ -28,15 +28,5 @@ type Query {
   server: Server!
   agent: Agent!
   ships: [Ship!]!
-  systems(page: PageArgs): SystemConnection!
-}
-
-type SystemEdge {
-	cursor: String
-	node: System!
-}
-
-type SystemConnection {
-	edges: [SystemEdge!]!
-	pageInfo: PageInfo!
+	systemCount: Int64!
 }

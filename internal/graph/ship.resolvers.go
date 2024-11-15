@@ -21,15 +21,6 @@ func (r *shipResolver) System(ctx context.Context, obj *model.Ship) (*model.Syst
 	return system, nil
 }
 
-// Waypoint is the resolver for the waypoint field.
-func (r *shipResolver) Waypoint(ctx context.Context, obj *model.Ship) (*model.Waypoint, error) {
-	waypoint, err := loaders.GetWaypoint(ctx, obj.WaypointID)
-	if err != nil {
-		return nil, fmt.Errorf("querying waypoint for ship %s: %w", obj.Name, err)
-	}
-	return waypoint, nil
-}
-
 // Ship returns ShipResolver implementation.
 func (r *Resolver) Ship() ShipResolver { return &shipResolver{r} }
 

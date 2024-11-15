@@ -3,7 +3,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"os/signal"
 
@@ -17,8 +16,8 @@ const (
 func main() {
 	var err error
 	defer func() {
-		fmt.Println(err)
 		if err != nil {
+			logger.Error(err)
 			os.Exit(1)
 		}
 	}()
@@ -38,7 +37,9 @@ func main() {
 		return
 	}
 	defer func() {
-		_ = s.Close()
+		if errClose := s.Close(); errClose != nil {
+			logger.Errorf("server shutdown failed: %v", errClose)
+		}
 	}()
 	// TODO: update in background, return ETA if queried
 	if err = s.CreateCaches(context.Background()); err != nil {
@@ -48,7 +49,8 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 	if err := s.Listen(ctx, 55555, "/graphql"); err != nil {
-		logger.Fatal(err)
+		logger.Error(err)
+		return
 	}
 	// TODO: configure port from env
 }

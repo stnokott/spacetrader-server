@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/99designs/gqlgen/graphql/handler"
+	"github.com/99designs/gqlgen/graphql/handler/transport"
+	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/stnokott/spacetrader-server/internal/api"
 	"github.com/stnokott/spacetrader-server/internal/cache"
 	"github.com/stnokott/spacetrader-server/internal/graph"
@@ -28,9 +30,8 @@ type Server struct {
 	queries *query.Queries
 	// TODO: check if api or query can be removed
 
-	systemCache   cache.SystemCache
-	jumpgateCache cache.JumpgateCache
-	fleetCache    *cache.FleetCache
+	systemCache cache.SystemCache
+	fleetCache  *cache.FleetCache
 }
 
 // New creates and returns a new Client instance.
@@ -54,14 +55,14 @@ func New(baseURL string, token string, dbFile string) (*Server, error) {
 		db:      db,
 		queries: q,
 
-		systemCache:   cache.NewSystemCache(client, db, q),
-		jumpgateCache: cache.NewJumpgateCache(client, db, q),
-		fleetCache:    cache.NewFleetCache(client),
+		systemCache: cache.NewSystemCache(client, db, q),
+		fleetCache:  cache.NewFleetCache(client),
 	}, nil
 }
 
 // Close terminates all underlying connections.
 func (s *Server) Close() error {
+	logger.Info("closing database connection")
 	return errors.Join(s.queries.Close(), s.db.Close())
 }
 
@@ -73,6 +74,7 @@ func (s *Server) Listen(ctx context.Context, port int, path string) error {
 	srv := handler.NewDefaultServer(graph.NewExecutableSchema(graph.Config{Resolvers: graph.NewResolver(
 		s.api, s.queries, s.fleetCache,
 	)}))
+	srv.AddTransport(&transport.Websocket{})
 
 	var srvHandler http.Handler = srv
 	// wrap dataloader middleware for injecting dataloaders into request contexts
@@ -80,6 +82,7 @@ func (s *Server) Listen(ctx context.Context, port int, path string) error {
 
 	mux := http.NewServeMux()
 	mux.Handle(path, srvHandler)
+	mux.Handle("/playground", playground.Handler("Playground", path))
 
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", port),
@@ -97,7 +100,7 @@ func (s *Server) Listen(ctx context.Context, port int, path string) error {
 
 	select {
 	case <-ctx.Done():
-		logger.Info("shutting down gracefully")
+		logger.Info("shutting down GraphQL server")
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		return server.Shutdown(ctx)
@@ -105,11 +108,6 @@ func (s *Server) Listen(ctx context.Context, port int, path string) error {
 		return err
 	}
 }
-
-// TODO: write functions for querying API stuff (e.g. getSystem)
-// which wrap API calls, but also handle caching.
-// So when calling getSystem and the queried system doesn't exist in the cache yet,
-// we query the API and write the result to the cache.
 
 var indexTimeout = 1 * time.Hour
 
@@ -123,11 +121,6 @@ func (s *Server) CreateCaches(ctxParent context.Context) error {
 
 	if err := worker.AddAndWait(ctx, "create-system-cache", func(ctx context.Context, progressChan chan<- float64) error {
 		return s.systemCache.Create(ctx, progressChan)
-	}, worker.WithMaxLogFrequency(5*time.Second)); err != nil {
-		return err
-	}
-	if err := worker.AddAndWait(ctx, "create-jumpgate-cache", func(ctx context.Context, progressChan chan<- float64) error {
-		return s.jumpgateCache.Create(ctx, progressChan)
 	}, worker.WithMaxLogFrequency(5*time.Second)); err != nil {
 		return err
 	}

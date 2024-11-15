@@ -2,7 +2,6 @@
 package convert
 
 import (
-	"strings"
 	"time"
 
 	"github.com/stnokott/spacetrader-server/internal/api"
@@ -19,7 +18,6 @@ import (
 // goverter:enum:unknown @error
 // goverter:extend IntTo.*
 // goverter:extend Int64To.*
-// goverter:extend Parse.*
 // goverter:extend TimeToTime
 type Converter interface {
 	// goverter:map LastReset.Time LastReset
@@ -35,44 +33,14 @@ type Converter interface {
 	// goverter:map Registration.Role Role
 	// goverter:map Nav.Status Status
 	// goverter:map Nav.SystemSymbol SystemID
-	// goverter:map Nav.WaypointSymbol WaypointID
 	// goverter:ignore System
-	// goverter:ignore Waypoint
 	ConvertShip(source *api.Ship) (*model.Ship, error)
 	ConvertShips(source []*api.Ship) ([]*model.Ship, error)
 
 	// goverter:map Symbol Name
-	// goverter:ignore Waypoints
-	// goverter:map Factions Factions | ParseFactions
-	// goverter:ignore HasJumpgates
+	// goverter:ignore JumpgateConnections
 	ConvertSystem(source query.System) *model.System
 	ConvertSystems(source []query.System) []*model.System
-
-	// goverter:map Symbol Name
-	// goverter:map System SystemID
-	// goverter:ignore System
-	ConvertWaypoint(source query.Waypoint) *model.Waypoint
-	ConvertWaypoints(source []query.Waypoint) []*model.Waypoint
-
-	// goverter:ignore From
-	// goverter:ignore To
-	// goverter:map Waypoint FromWaypointID
-	// goverter:map ConnectsTo ToWaypointID
-	ConvertJumpgate(source query.JumpGate) *model.Jumpgate
-	ConvertJumpgates(source []query.JumpGate) []*model.Jumpgate
-}
-
-// ParseFactions converts the concatenated factions from DB into a string slice.
-func ParseFactions(concat string) []api.FactionSymbol {
-	split := strings.Split(concat, ",")
-	if len(split) == 1 && split[0] == "" {
-		return []api.FactionSymbol{}
-	}
-	out := make([]api.FactionSymbol, len(split))
-	for i, x := range split {
-		out[i] = api.FactionSymbol(x)
-	}
-	return out
 }
 
 // TimeToTime is simple, but required since time.Time contains unexported fields which goverter

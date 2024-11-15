@@ -12,6 +12,7 @@
 			"program": "${workspaceFolder}/cmd/",
 			"envFile": "${workspaceFolder}/cmd/.env",
 			"cwd": "${workspaceFolder}",
+			"console": "integratedTerminal"
 		},
 	]
 }
