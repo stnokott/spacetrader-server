@@ -47,7 +47,7 @@ func NewClient(baseURL string, token string) *Client {
 // retryAfter handles 429 rate-limiting responses and configures the wait time accordingly.
 func retryAfter(_ *resty.Client, resp *resty.Response) (time.Duration, error) {
 	if resp.StatusCode() == 429 {
-		now := time.Now()
+		now := time.Now().UTC()
 		rateReset := resp.Header().Get("x-ratelimit-reset")
 		if rateReset == "" {
 			return 0, errors.New("got HTTP 429 without x-ratelimit-reset header")
@@ -56,7 +56,7 @@ func retryAfter(_ *resty.Client, resp *resty.Response) (time.Duration, error) {
 		if err != nil {
 			return 0, fmt.Errorf("parsing x-ratelimit-reset value: %w", err)
 		}
-		wait := t.Sub(now.UTC())
+		wait := now.Sub(t)
 		logger.Debugf("ratelimit exceeded, waiting %s", wait)
 		return wait, nil
 	}
