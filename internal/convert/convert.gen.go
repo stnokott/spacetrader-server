@@ -57,7 +57,6 @@ func ConvertShip(source *api.Ship) (*model.Ship, error) {
 		}
 		modelShip.Status = apiShipNavStatus
 		modelShip.SystemID = (*source).Nav.SystemSymbol
-		modelShip.WaypointID = (*source).Nav.WaypointSymbol
 		pModelShip = &modelShip
 	}
 	return pModelShip, nil
@@ -82,7 +81,6 @@ func ConvertSystem(source query.System) *model.System {
 	modelSystem.Type = api.SystemType(source.Type)
 	modelSystem.X = Int64ToInt(source.X)
 	modelSystem.Y = Int64ToInt(source.Y)
-	modelSystem.Factions = ParseFactions(source.Factions)
 	return &modelSystem
 }
 func ConvertSystems(source []query.System) []*model.System {
@@ -94,25 +92,6 @@ func ConvertSystems(source []query.System) []*model.System {
 		}
 	}
 	return pModelSystemList
-}
-func ConvertWaypoint(source query.Waypoint) *model.Waypoint {
-	var modelWaypoint model.Waypoint
-	modelWaypoint.Name = source.Symbol
-	modelWaypoint.Type = api.WaypointType(source.Type)
-	modelWaypoint.X = Int64ToInt(source.X)
-	modelWaypoint.Y = Int64ToInt(source.Y)
-	modelWaypoint.SystemID = source.System
-	return &modelWaypoint
-}
-func ConvertWaypoints(source []query.Waypoint) []*model.Waypoint {
-	var pModelWaypointList []*model.Waypoint
-	if source != nil {
-		pModelWaypointList = make([]*model.Waypoint, len(source))
-		for i := 0; i < len(source); i++ {
-			pModelWaypointList[i] = ConvertWaypoint(source[i])
-		}
-	}
-	return pModelWaypointList
 }
 func apiShipNavStatusToApiShipNavStatus(source api.ShipNavStatus) (api.ShipNavStatus, error) {
 	var apiShipNavStatus api.ShipNavStatus

@@ -151,25 +151,6 @@ func (q *Queries) InsertSystem(ctx context.Context, arg InsertSystemParams) erro
 	return err
 }
 
-const systemHasJumpgates = `-- name: SystemHasJumpgates :one
-SELECT
-	COUNT(jump_gates.waypoint) > 0 AS has_jumpgates
-FROM systems
-LEFT JOIN waypoints
-	ON waypoints.system = systems.symbol
-LEFT JOIN jump_gates
-	ON jump_gates.waypoint = waypoints.symbol
-WHERE systems.symbol = ?1
-GROUP BY systems.symbol
-`
-
-func (q *Queries) SystemHasJumpgates(ctx context.Context, systemID string) (bool, error) {
-	row := q.queryRow(ctx, q.systemHasJumpgatesStmt, systemHasJumpgates, systemID)
-	var has_jumpgates bool
-	err := row.Scan(&has_jumpgates)
-	return has_jumpgates, err
-}
-
 const truncateSystems = `-- name: TruncateSystems :exec
 DELETE FROM systems
 `

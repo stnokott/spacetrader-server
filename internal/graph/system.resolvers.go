@@ -8,17 +8,16 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/stnokott/spacetrader-server/internal/convert"
 	"github.com/stnokott/spacetrader-server/internal/graph/model"
 )
 
-// Waypoints is the resolver for the waypoints field.
-func (r *systemResolver) Waypoints(ctx context.Context, obj *model.System) ([]*model.Waypoint, error) {
-	waypoints, err := r.db.GetWaypointsForSystem(ctx, obj.Name)
+// ConnectedSystems is the resolver for the connectedSystems field.
+func (r *systemResolver) ConnectedSystems(ctx context.Context, obj *model.System) ([]string, error) {
+	rows, err := r.db.GetConnectedSystemNames(ctx, obj.Name)
 	if err != nil {
-		return nil, fmt.Errorf("querying waypoints for system %s: %w", obj.Name, err)
+		return nil, fmt.Errorf("querying connected systems for system %s: %w", obj.Name, err)
 	}
-	return convert.ConvertWaypoints(waypoints), nil
+	return rows, nil
 }
 
 // System returns SystemResolver implementation.

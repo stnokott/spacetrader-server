@@ -9,26 +9,26 @@ import (
 	"context"
 )
 
-const getConnectionsForWaypoint = `-- name: GetConnectionsForWaypoint :many
+const getConnectedSystemNames = `-- name: GetConnectedSystemNames :many
 SELECT
-	connects_to AS connected_wp
+	connects_to_sys
 FROM jump_gates
-WHERE waypoint = ?1
+WHERE system = ?1
 `
 
-func (q *Queries) GetConnectionsForWaypoint(ctx context.Context, waypoint string) ([]string, error) {
-	rows, err := q.query(ctx, q.getConnectionsForWaypointStmt, getConnectionsForWaypoint, waypoint)
+func (q *Queries) GetConnectedSystemNames(ctx context.Context, systemName string) ([]string, error) {
+	rows, err := q.query(ctx, q.getConnectedSystemNamesStmt, getConnectedSystemNames, systemName)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	items := []string{}
 	for rows.Next() {
-		var connected_wp string
-		if err := rows.Scan(&connected_wp); err != nil {
+		var connects_to_sys string
+		if err := rows.Scan(&connects_to_sys); err != nil {
 			return nil, err
 		}
-		items = append(items, connected_wp)
+		items = append(items, connects_to_sys)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -41,19 +41,26 @@ func (q *Queries) GetConnectionsForWaypoint(ctx context.Context, waypoint string
 
 const insertJumpGate = `-- name: InsertJumpGate :exec
 INSERT INTO jump_gates (
-	waypoint, connects_to
+	system, waypoint, connects_to_wp, connects_to_sys
 ) VALUES (
-	?, ?
+	?, ?, ?, ?
 )
 `
 
 type InsertJumpGateParams struct {
-	Waypoint   string
-	ConnectsTo string
+	System        string
+	Waypoint      string
+	ConnectsToWp  string
+	ConnectsToSys string
 }
 
 func (q *Queries) InsertJumpGate(ctx context.Context, arg InsertJumpGateParams) error {
-	_, err := q.exec(ctx, q.insertJumpGateStmt, insertJumpGate, arg.Waypoint, arg.ConnectsTo)
+	_, err := q.exec(ctx, q.insertJumpGateStmt, insertJumpGate,
+		arg.System,
+		arg.Waypoint,
+		arg.ConnectsToWp,
+		arg.ConnectsToSys,
+	)
 	return err
 }
 

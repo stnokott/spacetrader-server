@@ -90,9 +90,3 @@ models:
   Int64:
     model:
       - github.com/99designs/gqlgen/graphql.Int64
-
-  # pagination
-  PageArgs:
-    model: github.com/nrfta/go-paging.PageArgs
-  PageInfo:
-    model: github.com/nrfta/go-paging.PageInfo

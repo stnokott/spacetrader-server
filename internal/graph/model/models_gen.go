@@ -38,37 +38,21 @@ type ServerStats struct {
 }
 
 type Ship struct {
-	Name     string            `json:"name"`
-	Role     api.ShipRole      `json:"role"`
-	Status   api.ShipNavStatus `json:"status"`
-	System   *System           `json:"system"`
-	Waypoint *Waypoint         `json:"waypoint"`
+	Name   string            `json:"name"`
+	Role   api.ShipRole      `json:"role"`
+	Status api.ShipNavStatus `json:"status"`
+	System *System           `json:"system"`
 	// system ID for resolving system
 	SystemID string `json:"-"`
-	// waypoint ID for resolving waypoint
-	WaypointID string `json:"-"`
 }
 
 type Subscription struct {
 }
 
 type System struct {
-	Name      string              `json:"name"`
-	Type      api.SystemType      `json:"type"`
-	X         int                 `json:"x"`
-	Y         int                 `json:"y"`
-	Waypoints []*Waypoint         `json:"waypoints"`
-	Factions  []api.FactionSymbol `json:"factions"`
-}
-
-type Waypoint struct {
-	Name   string           `json:"name"`
-	System *System          `json:"system"`
-	Type   api.WaypointType `json:"type"`
-	X      int              `json:"x"`
-	Y      int              `json:"y"`
-	// connectedTo is the list of waypoints connected via jumpgate or null if this waypoint is not of type jumpgate.
-	ConnectedTo []*Waypoint `json:"connectedTo,omitempty"`
-	// system ID for resolving system
-	SystemID string `json:"-"`
+	Name             string         `json:"name"`
+	Type             api.SystemType `json:"type"`
+	X                int            `json:"x"`
+	Y                int            `json:"y"`
+	ConnectedSystems []string       `json:"connectedSystems"`
 }

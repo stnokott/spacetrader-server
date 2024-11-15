@@ -16,22 +16,10 @@ func GenerateSystems(count int, coordMin int, coordMax int) []*model.System {
 	for i := range systems {
 		systemName := GenerateSystemName(count, i)
 		systems[i] = &model.System{
-			Name:     systemName,
-			X:        coordMin + rand.Intn(coordMax-coordMin),
-			Y:        coordMin + rand.Intn(coordMax-coordMin),
-			Type:     api.SystemTypeBLACKHOLE,
-			Factions: []api.FactionSymbol{},
-			Waypoints: []*model.Waypoint{
-				{
-					Name:   systemName + "-WP",
-					System: nil,
-					X:      0,
-					Y:      0,
-				},
-			},
-		}
-		if rand.Float64() > 0.75 {
-			systems[i].Factions = []api.FactionSymbol{api.FactionSymbolASTRO}
+			Name: systemName,
+			X:    coordMin + rand.Intn(coordMax-coordMin),
+			Y:    coordMin + rand.Intn(coordMax-coordMin),
+			Type: api.SystemTypeBLACKHOLE,
 		}
 	}
 	return systems

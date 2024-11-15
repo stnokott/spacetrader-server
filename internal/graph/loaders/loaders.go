@@ -33,34 +33,17 @@ func (s *systemLoader) getSystems(ctx context.Context, systemIDs []string) ([]*m
 	return convert.ConvertSystems(systems), nil
 }
 
-// waypointLoader reads Waypoints from DB.
-type waypointLoader struct {
-	db *query.Queries
-}
-
-func (s *waypointLoader) getWaypoints(ctx context.Context, waypointIDs []string) ([]*model.Waypoint, []error) {
-	waypoints, err := s.db.GetWaypointsByName(ctx, waypointIDs)
-	if err != nil {
-		return nil, []error{err}
-	}
-
-	return convert.ConvertWaypoints(waypoints), nil
-}
-
 // Loaders wrap data loaders to inject via middleware
 type Loaders struct {
-	SystemLoader    *dataloadgen.Loader[string, *model.System]
-	WaypointsLoader *dataloadgen.Loader[string, *model.Waypoint]
+	SystemLoader *dataloadgen.Loader[string, *model.System]
 }
 
 // NewLoaders instantiates data loaders for the middleware
 func NewLoaders(db *query.Queries) *Loaders {
 	// define the data loader
 	sr := &systemLoader{db: db}
-	wr := &waypointLoader{db: db}
 	return &Loaders{
-		SystemLoader:    dataloadgen.NewLoader(sr.getSystems, dataloadgen.WithWait(loaderWait)),
-		WaypointsLoader: dataloadgen.NewLoader(wr.getWaypoints, dataloadgen.WithWait(loaderWait)),
+		SystemLoader: dataloadgen.NewLoader(sr.getSystems, dataloadgen.WithWait(loaderWait)),
 	}
 }
 
@@ -83,10 +66,4 @@ func For(ctx context.Context) *Loaders {
 func GetSystem(ctx context.Context, systemID string) (*model.System, error) {
 	loaders := For(ctx)
 	return loaders.SystemLoader.Load(ctx, systemID)
-}
-
-// GetWaypoint returns single waypoint by id efficiently
-func GetWaypoint(ctx context.Context, waypointID string) (*model.Waypoint, error) {
-	loaders := For(ctx)
-	return loaders.WaypointsLoader.Load(ctx, waypointID)
 }

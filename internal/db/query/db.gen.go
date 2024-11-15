@@ -24,8 +24,8 @@ func New(db DBTX) *Queries {
 func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	q := Queries{db: db}
 	var err error
-	if q.getConnectionsForWaypointStmt, err = db.PrepareContext(ctx, getConnectionsForWaypoint); err != nil {
-		return nil, fmt.Errorf("error preparing query GetConnectionsForWaypoint: %w", err)
+	if q.getConnectedSystemNamesStmt, err = db.PrepareContext(ctx, getConnectedSystemNames); err != nil {
+		return nil, fmt.Errorf("error preparing query GetConnectedSystemNames: %w", err)
 	}
 	if q.getSystemCountStmt, err = db.PrepareContext(ctx, getSystemCount); err != nil {
 		return nil, fmt.Errorf("error preparing query GetSystemCount: %w", err)
@@ -35,12 +35,6 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.getSystemsOffsetStmt, err = db.PrepareContext(ctx, getSystemsOffset); err != nil {
 		return nil, fmt.Errorf("error preparing query GetSystemsOffset: %w", err)
-	}
-	if q.getWaypointsByNameStmt, err = db.PrepareContext(ctx, getWaypointsByName); err != nil {
-		return nil, fmt.Errorf("error preparing query GetWaypointsByName: %w", err)
-	}
-	if q.getWaypointsForSystemStmt, err = db.PrepareContext(ctx, getWaypointsForSystem); err != nil {
-		return nil, fmt.Errorf("error preparing query GetWaypointsForSystem: %w", err)
 	}
 	if q.hasSystemsRowsStmt, err = db.PrepareContext(ctx, hasSystemsRows); err != nil {
 		return nil, fmt.Errorf("error preparing query HasSystemsRows: %w", err)
@@ -53,9 +47,6 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.insertWaypointStmt, err = db.PrepareContext(ctx, insertWaypoint); err != nil {
 		return nil, fmt.Errorf("error preparing query InsertWaypoint: %w", err)
-	}
-	if q.systemHasJumpgatesStmt, err = db.PrepareContext(ctx, systemHasJumpgates); err != nil {
-		return nil, fmt.Errorf("error preparing query SystemHasJumpgates: %w", err)
 	}
 	if q.truncateJumpGatesStmt, err = db.PrepareContext(ctx, truncateJumpGates); err != nil {
 		return nil, fmt.Errorf("error preparing query TruncateJumpGates: %w", err)
@@ -71,9 +62,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 
 func (q *Queries) Close() error {
 	var err error
-	if q.getConnectionsForWaypointStmt != nil {
-		if cerr := q.getConnectionsForWaypointStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing getConnectionsForWaypointStmt: %w", cerr)
+	if q.getConnectedSystemNamesStmt != nil {
+		if cerr := q.getConnectedSystemNamesStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getConnectedSystemNamesStmt: %w", cerr)
 		}
 	}
 	if q.getSystemCountStmt != nil {
@@ -89,16 +80,6 @@ func (q *Queries) Close() error {
 	if q.getSystemsOffsetStmt != nil {
 		if cerr := q.getSystemsOffsetStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getSystemsOffsetStmt: %w", cerr)
-		}
-	}
-	if q.getWaypointsByNameStmt != nil {
-		if cerr := q.getWaypointsByNameStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing getWaypointsByNameStmt: %w", cerr)
-		}
-	}
-	if q.getWaypointsForSystemStmt != nil {
-		if cerr := q.getWaypointsForSystemStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing getWaypointsForSystemStmt: %w", cerr)
 		}
 	}
 	if q.hasSystemsRowsStmt != nil {
@@ -119,11 +100,6 @@ func (q *Queries) Close() error {
 	if q.insertWaypointStmt != nil {
 		if cerr := q.insertWaypointStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing insertWaypointStmt: %w", cerr)
-		}
-	}
-	if q.systemHasJumpgatesStmt != nil {
-		if cerr := q.systemHasJumpgatesStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing systemHasJumpgatesStmt: %w", cerr)
 		}
 	}
 	if q.truncateJumpGatesStmt != nil {
@@ -178,41 +154,35 @@ func (q *Queries) queryRow(ctx context.Context, stmt *sql.Stmt, query string, ar
 }
 
 type Queries struct {
-	db                            DBTX
-	tx                            *sql.Tx
-	getConnectionsForWaypointStmt *sql.Stmt
-	getSystemCountStmt            *sql.Stmt
-	getSystemsByNameStmt          *sql.Stmt
-	getSystemsOffsetStmt          *sql.Stmt
-	getWaypointsByNameStmt        *sql.Stmt
-	getWaypointsForSystemStmt     *sql.Stmt
-	hasSystemsRowsStmt            *sql.Stmt
-	insertJumpGateStmt            *sql.Stmt
-	insertSystemStmt              *sql.Stmt
-	insertWaypointStmt            *sql.Stmt
-	systemHasJumpgatesStmt        *sql.Stmt
-	truncateJumpGatesStmt         *sql.Stmt
-	truncateSystemsStmt           *sql.Stmt
-	truncateWaypointsStmt         *sql.Stmt
+	db                          DBTX
+	tx                          *sql.Tx
+	getConnectedSystemNamesStmt *sql.Stmt
+	getSystemCountStmt          *sql.Stmt
+	getSystemsByNameStmt        *sql.Stmt
+	getSystemsOffsetStmt        *sql.Stmt
+	hasSystemsRowsStmt          *sql.Stmt
+	insertJumpGateStmt          *sql.Stmt
+	insertSystemStmt            *sql.Stmt
+	insertWaypointStmt          *sql.Stmt
+	truncateJumpGatesStmt       *sql.Stmt
+	truncateSystemsStmt         *sql.Stmt
+	truncateWaypointsStmt       *sql.Stmt
 }
 
 func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 	return &Queries{
-		db:                            tx,
-		tx:                            tx,
-		getConnectionsForWaypointStmt: q.getConnectionsForWaypointStmt,
-		getSystemCountStmt:            q.getSystemCountStmt,
-		getSystemsByNameStmt:          q.getSystemsByNameStmt,
-		getSystemsOffsetStmt:          q.getSystemsOffsetStmt,
-		getWaypointsByNameStmt:        q.getWaypointsByNameStmt,
-		getWaypointsForSystemStmt:     q.getWaypointsForSystemStmt,
-		hasSystemsRowsStmt:            q.hasSystemsRowsStmt,
-		insertJumpGateStmt:            q.insertJumpGateStmt,
-		insertSystemStmt:              q.insertSystemStmt,
-		insertWaypointStmt:            q.insertWaypointStmt,
-		systemHasJumpgatesStmt:        q.systemHasJumpgatesStmt,
-		truncateJumpGatesStmt:         q.truncateJumpGatesStmt,
-		truncateSystemsStmt:           q.truncateSystemsStmt,
-		truncateWaypointsStmt:         q.truncateWaypointsStmt,
+		db:                          tx,
+		tx:                          tx,
+		getConnectedSystemNamesStmt: q.getConnectedSystemNamesStmt,
+		getSystemCountStmt:          q.getSystemCountStmt,
+		getSystemsByNameStmt:        q.getSystemsByNameStmt,
+		getSystemsOffsetStmt:        q.getSystemsOffsetStmt,
+		hasSystemsRowsStmt:          q.hasSystemsRowsStmt,
+		insertJumpGateStmt:          q.insertJumpGateStmt,
+		insertSystemStmt:            q.insertSystemStmt,
+		insertWaypointStmt:          q.insertWaypointStmt,
+		truncateJumpGatesStmt:       q.truncateJumpGatesStmt,
+		truncateSystemsStmt:         q.truncateSystemsStmt,
+		truncateWaypointsStmt:       q.truncateWaypointsStmt,
 	}
 }

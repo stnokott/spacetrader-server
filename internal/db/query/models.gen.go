@@ -5,8 +5,10 @@
 package query
 
 type JumpGate struct {
-	Waypoint   string
-	ConnectsTo string
+	System        string
+	Waypoint      string
+	ConnectsToSys string
+	ConnectsToWp  string
 }
 
 type System struct {

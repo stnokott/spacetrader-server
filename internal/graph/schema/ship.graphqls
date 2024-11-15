@@ -26,15 +26,9 @@ type Ship
         name: "SystemID"
         type: "string"
         description: "system ID for resolving system"
-    )
-    @goExtraField(
-        name: "WaypointID"
-        type: "string"
-        description: "waypoint ID for resolving waypoint"
     ) {
 	name: String!
 	role: ShipRole!
     status: ShipStatus!
     system: System! @goField(forceResolver: true)
-    waypoint: Waypoint! @goField(forceResolver: true)
 }

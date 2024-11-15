@@ -159,9 +159,14 @@ func (c SystemCache) populateJumpgateWaypoint(ctx context.Context, system string
 	}
 
 	for _, connection := range jump.Data.Connections {
+		// TODO: refactor to allow for on-demand caching so we dont have to do string-mutations here
+		sysName := connection[:strings.LastIndex(connection, "-")]
+
 		if err := tx.InsertJumpGate(ctx, query.InsertJumpGateParams{
-			Waypoint:   wp,
-			ConnectsTo: connection,
+			System:        system,
+			Waypoint:      wp,
+			ConnectsToWp:  connection,
+			ConnectsToSys: sysName,
 		}); err != nil {
 			return fmt.Errorf("inserting jumpgate: %w", err)
 		}

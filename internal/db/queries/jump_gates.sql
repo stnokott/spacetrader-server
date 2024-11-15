@@ -1,15 +1,16 @@
 -- name: InsertJumpGate :exec
 INSERT INTO jump_gates (
-	waypoint, connects_to
+	system, waypoint, connects_to_wp, connects_to_sys
 ) VALUES (
-	?, ?
+	?, ?, ?, ?
 );
 
 -- name: TruncateJumpGates :exec
 DELETE FROM jump_gates;
 
--- name: GetConnectionsForWaypoint :many
+-- name: GetConnectedSystemNames :many
 SELECT
-	connects_to AS connected_wp
+	connects_to_sys
 FROM jump_gates
-WHERE waypoint = sqlc.arg(waypoint);
+WHERE system = sqlc.arg(system_name)
+;

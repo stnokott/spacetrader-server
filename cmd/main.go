@@ -3,8 +3,10 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
+	"runtime/pprof"
 
 	"github.com/stnokott/spacetrader-server/internal/config"
 )
@@ -21,6 +23,17 @@ func main() {
 			os.Exit(1)
 		}
 	}()
+
+	var pprofFile *os.File
+	pprofFile, err = os.Create("cpu.pprof")
+	if err != nil {
+		err = fmt.Errorf("could not create CPU profile: %w", err)
+	}
+	defer pprofFile.Close() // error handling omitted for example
+	if err := pprof.StartCPUProfile(pprofFile); err != nil {
+		err = fmt.Errorf("could not start CPU profile: %w", err)
+	}
+	defer pprof.StopCPUProfile()
 
 	// load config
 	var cfg *config.Config

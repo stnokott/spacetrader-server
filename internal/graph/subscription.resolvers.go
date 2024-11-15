@@ -47,6 +47,7 @@ func (r *subscriptionResolver) System(ctx context.Context) (<-chan *model.System
 				}
 			}
 		}
+		logger.Debug("initial system subscription data sent")
 	}()
 
 	return ch, nil

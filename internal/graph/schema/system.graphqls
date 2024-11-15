@@ -16,6 +16,5 @@ type System {
 	type: SystemType!
 	x: Int!
 	y: Int!
-	waypoints: [Waypoint!]! @goField(forceResolver: true)
-	factions: [Faction!]!
+	connectedSystems: [String!]! @goField(forceResolver: true)
 }
