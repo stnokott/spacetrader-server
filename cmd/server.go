@@ -30,9 +30,8 @@ type Server struct {
 	queries *query.Queries
 	// TODO: check if api or query can be removed
 
-	systemCache   cache.SystemCache
-	jumpgateCache cache.JumpgateCache
-	fleetCache    *cache.FleetCache
+	systemCache cache.SystemCache
+	fleetCache  *cache.FleetCache
 }
 
 // New creates and returns a new Client instance.
@@ -56,9 +55,8 @@ func New(baseURL string, token string, dbFile string) (*Server, error) {
 		db:      db,
 		queries: q,
 
-		systemCache:   cache.NewSystemCache(client, db, q),
-		jumpgateCache: cache.NewJumpgateCache(client, db, q),
-		fleetCache:    cache.NewFleetCache(client),
+		systemCache: cache.NewSystemCache(client, db, q),
+		fleetCache:  cache.NewFleetCache(client),
 	}, nil
 }
 
@@ -111,11 +109,6 @@ func (s *Server) Listen(ctx context.Context, port int, path string) error {
 	}
 }
 
-// TODO: write functions for querying API stuff (e.g. getSystem)
-// which wrap API calls, but also handle caching.
-// So when calling getSystem and the queried system doesn't exist in the cache yet,
-// we query the API and write the result to the cache.
-
 var indexTimeout = 1 * time.Hour
 
 // CreateCaches updates or creates all registered indexes.
@@ -128,11 +121,6 @@ func (s *Server) CreateCaches(ctxParent context.Context) error {
 
 	if err := worker.AddAndWait(ctx, "create-system-cache", func(ctx context.Context, progressChan chan<- float64) error {
 		return s.systemCache.Create(ctx, progressChan)
-	}, worker.WithMaxLogFrequency(5*time.Second)); err != nil {
-		return err
-	}
-	if err := worker.AddAndWait(ctx, "create-jumpgate-cache", func(ctx context.Context, progressChan chan<- float64) error {
-		return s.jumpgateCache.Create(ctx, progressChan)
 	}, worker.WithMaxLogFrequency(5*time.Second)); err != nil {
 		return err
 	}

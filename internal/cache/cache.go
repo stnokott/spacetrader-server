@@ -126,77 +126,36 @@ func (c SystemCache) insertWaypoint(ctx context.Context, system string, wp *api.
 		return fmt.Errorf("inserting waypoint '%s': %w", wp.Symbol, err)
 	}
 
+	if wp.Type == api.JUMPGATE {
+		if err := c.populateJumpgateWaypoint(ctx, system, wp.Symbol, tx); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
-type JumpgateCache struct {
-	client  *api.Client
-	db      *sql.DB
-	queries *query.Queries
-}
-
-// NewJumpgateCache creates a new jumpgate cache instance.
-func NewJumpgateCache(client *api.Client, db *sql.DB, queries *query.Queries) JumpgateCache {
-	return JumpgateCache{
-		client:  client,
-		db:      db,
-		queries: queries,
+func (c SystemCache) populateJumpgateWaypoint(ctx context.Context, system string, wp string, tx query.Tx) error {
+	// check if waypoint if charted (because if it isn't, we dont have jumpgate info)
+	// also, this information isn't available in the SystemWaypoint type, so we need to waste an API call for checking.
+	url := fmt.Sprintf("/systems/%s/waypoints/%s", system, wp)
+	waypoint := &struct {
+		Data api.Waypoint `json:"data"`
+	}{}
+	if err := c.client.Get(ctx, waypoint, url); err != nil {
+		return fmt.Errorf("querying waypoint: %w", err)
 	}
-}
-
-// Create populates the contents of the `jump_gates` table with results from the API.
-//
-// It does so by querying all waypoints of type JUMP_GATE from the DB and enriching
-// that information with jump gate specific details.
-func (c JumpgateCache) Create(ctx context.Context, progressChan chan<- float64) (err error) {
-	// check if already exists
-	if v, err := c.queries.HasJumpgateRows(ctx); err != nil {
-		return err
-	} else if v != 0 {
+	if waypoint.Data.Chart == nil {
+		// not charted => no jumpgate info => abort
 		return nil
 	}
 
-	var tx query.Tx
-	tx, err = query.WithTx(ctx, c.db, c.queries)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		tx.Done(err)
-	}()
-
-	wps, err := tx.GetWaypointsByType(ctx, string(api.JUMPGATE))
-	if err != nil {
-		return fmt.Errorf("quering jumpgate waypoints: %w", err)
-	}
-
-	for i, wp := range wps {
-		if err = c.populateJumpgate(ctx, wp.System, wp.Symbol, tx); err != nil {
-			return err
-		}
-		progressChan <- float64(i) / float64(len(wps))
-	}
-	return nil
-}
-
-func (c JumpgateCache) populateJumpgate(ctx context.Context, system string, wp string, tx query.Tx) error {
-	url := fmt.Sprintf("/systems/%s/waypoints/%s/jump-gate", system, wp)
+	url = fmt.Sprintf("/systems/%s/waypoints/%s/jump-gate", system, wp)
 	jump := &struct {
 		Data api.JumpGate `json:"data"`
 	}{}
 	if err := c.client.Get(ctx, jump, url); err != nil {
-		if errAPI, ok := err.(*api.APIError); ok && errAPI.Err.Code == 4001 {
-			// Error code 4001 is returned when jumpgate information is not available because
-			// the waypoint hasn't been mapped yet.
-			//
-			// This waypoint needs to be ignored since we have no useful information available.
-			// We return a nil error in this case since nothing went wrong, we're simply
-			// dealing with a game mechanic.
-			logger.Debugf("skipping uncharted jumpgate waypoint %s", wp)
-			return nil
-		} else {
-			return fmt.Errorf("querying jump gate: %w", err)
-		}
+		return fmt.Errorf("querying jump gate: %w", err)
 	}
 
 	for _, connection := range jump.Data.Connections {

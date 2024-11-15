@@ -8,7 +8,11 @@ INSERT INTO jump_gates (
 -- name: TruncateJumpGates :exec
 DELETE FROM jump_gates;
 
+-- name: HasJumpgateRows :one
+SELECT EXISTS (SELECT 1 FROM jump_gates) AS "exists";
+
 -- name: GetConnectedSystemNames :many
+SELECT
 	connects_to_sys
 FROM jump_gates
 WHERE system = sqlc.arg(system_name)
