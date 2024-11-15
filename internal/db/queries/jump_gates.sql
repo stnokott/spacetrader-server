@@ -9,7 +9,6 @@ INSERT INTO jump_gates (
 DELETE FROM jump_gates;
 
 -- name: GetConnectedSystemNames :many
-SELECT
 	connects_to_sys
 FROM jump_gates
 WHERE system = sqlc.arg(system_name)
