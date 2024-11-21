@@ -16,7 +16,7 @@ require (
 	github.com/vikstrous/dataloadgen v0.0.6
 	go-simpler.org/env v0.12.0
 	go.uber.org/ratelimit v0.3.1
-	golang.org/x/sys v0.25.0
+	golang.org/x/sys v0.27.0
 	modernc.org/sqlite v1.34.1
 )
 
