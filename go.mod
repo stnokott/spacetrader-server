@@ -17,7 +17,7 @@ require (
 	go-simpler.org/env v0.12.0
 	go.uber.org/ratelimit v0.3.1
 	golang.org/x/sys v0.25.0
-	modernc.org/sqlite v1.33.1
+	modernc.org/sqlite v1.34.1
 )
 
 require (
